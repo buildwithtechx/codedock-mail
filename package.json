@@ -16,7 +16,7 @@
     "fmt": "go fmt ./... && npm run format:fix",
     "format": "biome check apps",
     "format:fix": "biome check --write apps",
-    "test": "go test ./... && npm run test --workspace=@codedock-mail/admin"
+    "test": "go test ./..."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15"

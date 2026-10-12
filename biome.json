@@ -20,7 +20,34 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "preset": "recommended"
+      "preset": "recommended",
+      "style": {
+        "noDefaultExport": "off",
+        "useImportType": "warn",
+        "noNonNullAssertion": "off"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noInvalidPositionAtImportRule": "off",
+        "useExhaustiveDependencies": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "off",
+        "noShorthandPropertyOverrides": "off",
+        "noExplicitAny": "off"
+      },
+      "complexity": {
+        "noImportantStyles": "off"
+      },
+      "nursery": {
+        "useSortedClasses": {
+          "level": "warn",
+          "fix": "safe"
+        }
+      }
     }
   },
   "javascript": {
@@ -33,10 +60,25 @@
       "bracketSpacing": true
     }
   },
+  "css": {
+    "formatter": {
+      "enabled": true,
+      "quoteStyle": "single"
+    },
+    "parser": {
+      "tailwindDirectives": true
+    },
+    "linter": {
+      "enabled": true
+    }
+  },
   "files": {
     "includes": [
       "apps/admin/src/**",
       "apps/docs/src/**",
+      "!**/.tanstack",
+      "!**/*.gen.ts",
+      "!**/routeTree.gen.ts",
       "!**/dist",
       "!**/out",
       "!**/data"

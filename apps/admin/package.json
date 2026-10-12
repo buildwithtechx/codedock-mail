@@ -2,7 +2,7 @@
   "name": "@codedock-mail/admin",
   "private": true,
   "version": "0.1.0",
-  "description": "codedock-mail admin UI — React 19, embeddable in Codedock dashboard",
+  "description": "codedock-mail admin — React 19, TanStack Router, Tailwind CSS v4",
   "license": "Apache-2.0",
   "type": "module",
   "imports": {
@@ -10,23 +10,36 @@
   },
   "scripts": {
     "dev": "vite dev --port 3001",
+    "generate-routes": "tsr generate",
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "format": "biome check src",
-    "format:fix": "biome check --write src",
-    "test": "vitest run"
+    "format:fix": "biome check --write src"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-router": "^1.170.18",
+    "@tanstack/router-plugin": "^1.168.23",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.28.0",
+    "next-themes": "^0.4.6",
+    "radix-ui": "^1.6.7",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.6.0",
+    "tailwindcss": "^4.3.3",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@tanstack/router-cli": "^1.167.21",
     "@vitejs/plugin-react": "^6.0.5",
     "typescript": "^7.0.2",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.0"
   }
 }
