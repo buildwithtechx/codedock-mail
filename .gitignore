@@ -1,0 +1,11 @@
+bin/
+dist/
+node_modules/
+.vite/
+*.tsbuildinfo
+.astro/
+data/
+tmp/
+*.env
+*.env.local
+*.exe

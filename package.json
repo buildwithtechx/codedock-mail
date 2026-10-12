@@ -1,0 +1,24 @@
+{
+  "name": "codedock-mail",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Standalone mail product. Own repo, own release. Installable in Codedock.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm run dev:admin",
+    "dev:admin": "npm run dev --workspace=@codedock-mail/admin",
+    "build:admin": "npm run build --workspace=@codedock-mail/admin",
+    "dev:docs": "npm run dev --workspace=@codedock-mail/docs",
+    "build:docs": "npm run build --workspace=@codedock-mail/docs",
+    "build:daemon": "go build -ldflags \"-s -w\" -o bin/maild ./cmd/maild",
+    "fmt": "go fmt ./... && npm run format:fix",
+    "format": "biome check apps",
+    "format:fix": "biome check --write apps",
+    "test": "go test ./... && npm run test --workspace=@codedock-mail/admin"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15"
+  }
+}

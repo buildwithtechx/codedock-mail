@@ -1,0 +1,43 @@
+name: codedock-mail
+
+services:
+  maild:
+    build: ..
+    environment:
+      PORT: 8081
+      DATABASE_URL: postgres://mail:mail@postgres:5432/mail?sslmode=disable
+      MAIL_DOMAIN: ${MAIL_DOMAIN:-example.com}
+      MAIL_HOSTNAME: ${MAIL_HOSTNAME:-mail.example.com}
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8081"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mail
+      POSTGRES_PASSWORD: mail
+      POSTGRES_DB: mail
+    volumes:
+      - mail_db:/var/lib/postgresql/data
+
+  engine:
+    image: stalwartlabs/stalwart:latest
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+    volumes:
+      - mail_data:/opt/stalwart-mail
+
+  webmail:
+    build: ../apps/webmail-ext
+    ports:
+      - "4080:8080"
+
+volumes:
+  mail_db:
+  mail_data:
