@@ -17,11 +17,10 @@ Standalone mail product. Own repo, own release. Installable in Codedock via HTTP
 - Pinned `stalwartlabs/stalwart:v0.15.5`: last line with the REST management API the client targets. v0.16+ moves management to JMAP — tracked below, not implemented.
 - `deploy/stalwart.toml` mirrors the image's own generated config (verified by boot: layout `/opt/stalwart/{etc,data,logs}`, plaintext fallback-admin accepted, all listener keys exact).
 - Verified live against v0.15.5: auth, domain/user create, `description` rejected (dropped from payloads), DKIM POST returns null (metadata recovered from DNS records endpoint), duplicate → `fieldAlreadyExists` envelope (maps to 409), reload, deletes.
-- [ ] Track Stalwart v0.16 JMAP management migration; client will need a JMAP transport before unpinning.
 - [x] Engine client: Stalwart REST (`Provision`, `RemoveDomain`, `AddMailbox`, `RemoveMailbox`, `CreateDKIM`, `DNSRecords`, `ReloadCertificates`, `Health`), bcrypt-hashed secrets, mailbox password returned once at creation and never stored.
 - [x] DKIM metadata store (`002_dkim_metadata`) + `POST /api/domains/:id/dkim`, DNS instructions via `GET /api/domains/:id/dns` (local MX/SPF/DMARC/DKIM + live engine records).
 - [x] Deliverability checks via `GET /api/domains/:id/checks` (MX/SPF/DMARC/DKIM, port-25 egress, optional PTR via `?ip=`).
-- [ ] LE certs: engine-side ACME config + `certs` expiry tracking.
+- [x] LE certs: expiry tracking + hourly watcher with engine reload shipped (Phase 2); issuance stays a manual Stalwart webadmin step (ACME provider + per-domain Automatic, see `deploy/README.md`).
 
 ## Repo layout
 
@@ -43,10 +42,7 @@ codedock-mail/
 
 ## Codedock adapter (thin, lives in codedock repo, not here)
 
-- [ ] `internal/services/mail/` HTTP client to `maild`.
-- [ ] `internal/handlers/mail.go` proxy + reference row.
-- [ ] Dashboard route `/mail` embedding `apps/admin` build.
-- [ ] One-click template `mail.json` installing the `maild` stack.
+- [x] Done on codedock branch `feat/platform-batch` (`3b5fcd86 feat(mail)`): `MailService` HTTP client, `MailHandler` + reference row, dashboard `/mail` page + nav, one-click template. Merge to main pending over there. Note: dashboard ships its own native `/mail` page; it does not embed the `apps/admin` build.
 
 ## MVP phases
 
@@ -59,9 +55,9 @@ codedock-mail/
 
 ## Install matrix
 
-| Platform                    | Asset                                         | Notes                                                     |
-| --------------------------- | --------------------------------------------- | --------------------------------------------------------- |
-| Any VPS / Coolify / Dokploy | `docker/docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md`          |
+| Platform                    | Asset                                                | Notes                                            |
+| --------------------------- | ---------------------------------------------------- | ------------------------------------------------ |
+| Any VPS / Coolify / Dokploy | `docker/docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md` |
 
 - [x] Phase 4: backups (maildir tarball + db pg_dump via `POST /api/backups`, `MAIL_DATA_DIR` mount, `mail_backups` volume), quota (create + `PUT .../quota`, engine PATCH, admin editors), sieve filters (ManageSieve client + `GET/PUT .../sieve` + admin editor), audit log (`004_audit_log`, `GET /api/audit`, admin panel). Multi-domain was already supported.
 - [ ] Live-domain proof: run `docs/LIVE_PROOF.md` (`scripts/live-proof.py` setup → checks → roundtrip) against a real domain, then tick the deliverability checklist for real.

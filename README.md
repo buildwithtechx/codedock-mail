@@ -33,9 +33,13 @@ Requirements: Go 1.26+, Node.js 22+, Docker.
 
 ```bash
 cp .env.example .env
+docker compose -f docker/docker-compose.yml up postgres -d
 npm run dev
 ```
 
 `npm run dev` runs the daemon under air (`:8081`) and the admin UI
 under Vite (`:3001`, proxying `/api`) together. Run each alone with
-`npm run dev:daemon` or `npm run dev:admin`.
+`npm run dev:daemon` or `npm run dev:admin`. `maild` loads `.env` on
+boot (explicit environment wins); air rebuilds when `.env` changes.
+The default `DATABASE_URL` matches the compose `postgres` service, so
+no extra config is needed for local dev.

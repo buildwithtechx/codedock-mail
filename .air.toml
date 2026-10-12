@@ -5,8 +5,8 @@ tmp_dir = "tmp"
   cmd = "go build -buildvcs=false -o ./tmp/maild.exe ./cmd/maild"
   entrypoint = ["./tmp/maild.exe"]
   include_dir = ["cmd", "internal", "apps"]
-  include_ext = ["go", "tpl", "tmpl", "html"]
-  exclude_dir = ["tmp", "bin", "data", "dist", "build", "node_modules", ".git"]
+  include_ext = ["go", "tpl", "tmpl", "html", "env"]
+  exclude_dir = ["tmp", "bin", "data", "dist", "build", "node_modules", ".git", "apps/admin/node_modules", "apps/admin/dist", "apps/admin/public", "apps/docs", "apps/webmail-ext"]
   exclude_file = []
   delay = 1000
   stop_on_error = true
