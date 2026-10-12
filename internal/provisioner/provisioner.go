@@ -10,6 +10,7 @@ type DKIMResult struct {
 
 type Engine interface {
 	Provision(domain string) error
+	RemoveDomain(domain string) error
 	AddMailbox(address, secretHash string) error
 	RemoveMailbox(address string) error
 	CreateDKIM(domain, selector, algorithm string) (DKIMResult, error)

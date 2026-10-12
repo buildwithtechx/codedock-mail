@@ -21,8 +21,13 @@ provisioned on an engine and mailbox creation returns no password.
 | POST     | `/api/domains/:id/dkim`      | engine generates the key, metadata stored          |
 | GET      | `/api/domains/:id/dns`       | local MX/SPF/DMARC/DKIM plus live engine records   |
 | GET      | `/api/domains/:id/checks`    | MX/SPF/DMARC/DKIM, port-25 egress, `?ip=` adds PTR |
+| GET      | `/api/domains/:id`           | single domain |
+| DELETE   | `/api/domains/:id`           | engine principal removed first, then local row (cascade) |
+| DELETE   | `/api/domains/:domainId/mailboxes/:mailboxId` | engine principal removed first |
 | GET      | `/api/certs`                 | tracked certificate expiries |
 | POST     | `/api/certs/probe`           | TLS-handshake expiry probe (implicit TLS ports), upserts tracking row |
+| GET      | `/autoconfig/mail/config-v1.1.xml?emailaddress=` | Thunderbird client config (also under `/.well-known/`) |
+| GET/POST | `/autodiscover/autodiscover.xml` | Outlook 2006a POX (XML body or `?Email=`) |
 
 ## Certs
 

@@ -47,7 +47,7 @@ func main() {
 	if port == "" {
 		port = "8081"
 	}
-	srv := api.New(st, engine)
+	srv := api.New(st, engine, os.Getenv("MAILD_API_TOKEN"))
 	if err := srv.Start(":" + port); err != nil {
 		slog.Error("start server", "error", err)
 		os.Exit(1)

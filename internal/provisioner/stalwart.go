@@ -62,6 +62,11 @@ func (e *StalwartEngine) RemoveMailbox(address string) error {
 	return err
 }
 
+func (e *StalwartEngine) RemoveDomain(domain string) error {
+	_, err := e.do(http.MethodDelete, "/api/principal/"+url.PathEscape(domain), nil)
+	return err
+}
+
 func (e *StalwartEngine) CreateDKIM(domain, selector, algorithm string) (DKIMResult, error) {
 	raw, err := e.do(http.MethodPost, "/api/dkim", map[string]string{
 		"algorithm": algorithm,

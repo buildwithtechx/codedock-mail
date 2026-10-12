@@ -151,3 +151,60 @@ func TestCertsUpsertAndExpiring(t *testing.T) {
 		t.Fatalf("expected one expired cert, got %+v", expiring)
 	}
 }
+
+func TestDomainByNameAndDelete(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	created, err := st.CreateDomain(ctx, "example.com")
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+	found, err := st.GetDomainByName(ctx, "example.com")
+	if err != nil || found.ID != created.ID {
+		t.Fatalf("expected domain %s, got %+v %v", created.ID, found, err)
+	}
+	if _, err := st.GetDomainByName(ctx, "missing.test"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+	if _, err := st.CreateMailbox(ctx, created.ID, "alice"); err != nil {
+		t.Fatalf("create mailbox: %v", err)
+	}
+	if err := st.DeleteDomain(ctx, created.ID); err != nil {
+		t.Fatalf("delete domain: %v", err)
+	}
+	if _, err := st.GetDomain(ctx, created.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound after delete, got %v", err)
+	}
+	if _, err := st.ListMailboxes(ctx, created.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected mailboxes gone with domain, got %v", err)
+	}
+	if err := st.DeleteDomain(ctx, created.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound on second delete, got %v", err)
+	}
+}
+
+func TestMailboxGetAndDelete(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	d, err := st.CreateDomain(ctx, "example.com")
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+	created, err := st.CreateMailbox(ctx, d.ID, "alice")
+	if err != nil {
+		t.Fatalf("create mailbox: %v", err)
+	}
+	found, err := st.GetMailbox(ctx, created.ID)
+	if err != nil || found.Address != "alice@example.com" {
+		t.Fatalf("expected alice@example.com, got %+v %v", found, err)
+	}
+	if _, err := st.GetMailbox(ctx, "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+	if err := st.DeleteMailbox(ctx, created.ID); err != nil {
+		t.Fatalf("delete mailbox: %v", err)
+	}
+	if _, err := st.GetMailbox(ctx, created.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound after delete, got %v", err)
+	}
+}

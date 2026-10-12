@@ -11,6 +11,7 @@ services:
       STALWART_URL: http://engine:8080
       STALWART_USER: ${STALWART_USER:-admin}
       STALWART_SECRET: ${STALWART_SECRET:?set STALWART_SECRET}
+      MAILD_API_TOKEN: ${MAILD_API_TOKEN:?set MAILD_API_TOKEN}
     depends_on:
       - postgres
       - engine

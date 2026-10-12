@@ -2,11 +2,14 @@ package api
 
 import (
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/buildwithtechx/codedock-mail/internal/autoconfig"
 	"github.com/buildwithtechx/codedock-mail/internal/certs"
 	"github.com/buildwithtechx/codedock-mail/internal/dns"
 	"github.com/buildwithtechx/codedock-mail/internal/models"
@@ -20,19 +23,42 @@ type Server struct {
 	engine provisioner.Engine
 }
 
-func New(s *store.Store, engine provisioner.Engine) *Server {
+func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 	e := echo.New()
+	if token != "" {
+		e.Use(middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
+			KeyLookup:  "header:Authorization",
+			AuthScheme: "Bearer",
+			Validator: func(key string, c echo.Context) (bool, error) {
+				return key == token, nil
+			},
+			Skipper: func(c echo.Context) bool {
+				path := c.Request().URL.Path
+				return path == "/health" ||
+					strings.HasPrefix(path, "/autoconfig/") ||
+					strings.HasPrefix(path, "/.well-known/autoconfig/") ||
+					strings.HasPrefix(path, "/autodiscover/")
+			},
+		}))
+	}
 	srv := &Server{echo: e, store: s, engine: engine}
 	e.GET("/health", srv.health)
 	e.GET("/api/domains", srv.listDomains)
 	e.POST("/api/domains", srv.createDomain)
+	e.GET("/api/domains/:id", srv.getDomain)
+	e.DELETE("/api/domains/:id", srv.deleteDomain)
 	e.GET("/api/domains/:id/mailboxes", srv.listMailboxes)
 	e.POST("/api/domains/:id/mailboxes", srv.createMailbox)
+	e.DELETE("/api/domains/:domainId/mailboxes/:mailboxId", srv.deleteMailbox)
 	e.POST("/api/domains/:id/dkim", srv.createDKIM)
 	e.GET("/api/domains/:id/dns", srv.domainDNS)
 	e.GET("/api/domains/:id/checks", srv.domainChecks)
 	e.GET("/api/certs", srv.listCerts)
 	e.POST("/api/certs/probe", srv.probeCert)
+	e.GET("/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
+	e.GET("/.well-known/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
+	e.GET("/autodiscover/autodiscover.xml", srv.outlookConfig)
+	e.POST("/autodiscover/autodiscover.xml", srv.outlookConfig)
 	return srv
 }
 
@@ -243,6 +269,102 @@ func (s *Server) probeCert(c echo.Context) error {
 		return writeError(c, err)
 	}
 	return c.JSON(http.StatusOK, cert)
+}
+
+func (s *Server) getDomain(c echo.Context) error {
+	d, err := s.store.GetDomain(c.Request().Context(), c.Param("id"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(http.StatusOK, d)
+}
+
+func (s *Server) deleteDomain(c echo.Context) error {
+	ctx := c.Request().Context()
+	d, err := s.store.GetDomain(ctx, c.Param("id"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	if s.engine != nil {
+		if err := s.engine.RemoveDomain(d.Name); err != nil {
+			return writeError(c, err)
+		}
+	}
+	if err := s.store.DeleteDomain(ctx, d.ID); err != nil {
+		return writeError(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (s *Server) deleteMailbox(c echo.Context) error {
+	ctx := c.Request().Context()
+	m, err := s.store.GetMailbox(ctx, c.Param("mailboxId"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	if m.DomainID != c.Param("domainId") {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "not found"})
+	}
+	if s.engine != nil {
+		if err := s.engine.RemoveMailbox(m.Address); err != nil {
+			return writeError(c, err)
+		}
+	}
+	if err := s.store.DeleteMailbox(ctx, m.ID); err != nil {
+		return writeError(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (s *Server) thunderbirdConfig(c echo.Context) error {
+	email := strings.TrimSpace(c.QueryParam("emailaddress"))
+	if email == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "emailaddress is required"})
+	}
+	provider, err := s.lookupProvider(c, email)
+	if err != nil {
+		return err
+	}
+	raw, err := autoconfig.ThunderbirdXML(provider)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.Blob(http.StatusOK, "application/xml", raw)
+}
+
+func (s *Server) outlookConfig(c echo.Context) error {
+	email := strings.TrimSpace(c.QueryParam("Email"))
+	if email == "" && c.Request().Method == http.MethodPost {
+		raw, err := io.ReadAll(io.LimitReader(c.Request().Body, 1<<20))
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid body"})
+		}
+		email = autoconfig.OutlookRequestEmail(raw)
+	}
+	if email == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "email address is required"})
+	}
+	provider, err := s.lookupProvider(c, email)
+	if err != nil {
+		return err
+	}
+	raw, err := autoconfig.OutlookXML(provider, email)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.Blob(http.StatusOK, "application/xml", raw)
+}
+
+func (s *Server) lookupProvider(c echo.Context, email string) (autoconfig.Provider, error) {
+	domain, err := autoconfig.DomainOf(email)
+	if err != nil {
+		return autoconfig.Provider{}, c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid email address"})
+	}
+	d, err := s.store.GetDomainByName(c.Request().Context(), domain)
+	if err != nil {
+		return autoconfig.Provider{}, writeError(c, err)
+	}
+	return autoconfig.Provider{Domain: d.Name, DisplayName: d.Name + " Mail", MailHost: "mail." + d.Name}, nil
 }
 
 func writeError(c echo.Context, err error) error {

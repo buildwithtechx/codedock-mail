@@ -171,6 +171,19 @@ func TestReloadCertificates(t *testing.T) {
 	}
 }
 
+func TestRemoveDomain(t *testing.T) {
+	var captured capturedRequest
+	server := newTestServer(t, 200, `{}`, &captured)
+	defer server.Close()
+	engine := NewStalwart(server.URL, "admin", "secret")
+	if err := engine.RemoveDomain("example.com"); err != nil {
+		t.Fatalf("remove domain: %v", err)
+	}
+	if captured.method != http.MethodDelete || captured.path != "/api/principal/example.com" {
+		t.Fatalf("expected DELETE /api/principal/example.com, got %s %s", captured.method, captured.path)
+	}
+}
+
 func TestPasswordRoundTrip(t *testing.T) {
 	password, err := GeneratePassword()
 	if err != nil {

@@ -39,6 +39,20 @@ func (s *Store) GetDomain(ctx context.Context, id string) (models.Domain, error)
 	return d, nil
 }
 
+func (s *Store) GetDomainByName(ctx context.Context, name string) (models.Domain, error) {
+	var d models.Domain
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, name, created_at, updated_at FROM domains WHERE name = $1`, name).
+		Scan(&d.ID, &d.Name, &d.CreatedAt, &d.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Domain{}, ErrNotFound
+		}
+		return models.Domain{}, fmt.Errorf("get domain by name: %w", err)
+	}
+	return d, nil
+}
+
 func (s *Store) ListDomains(ctx context.Context) ([]models.Domain, error) {
 	rows, err := s.pool.Query(ctx,
 		`SELECT id, name, created_at, updated_at FROM domains ORDER BY name`)
@@ -55,4 +69,15 @@ func (s *Store) ListDomains(ctx context.Context) ([]models.Domain, error) {
 		domains = append(domains, d)
 	}
 	return domains, rows.Err()
+}
+
+func (s *Store) DeleteDomain(ctx context.Context, id string) error {
+	result, err := s.pool.Exec(ctx, `DELETE FROM domains WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete domain: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

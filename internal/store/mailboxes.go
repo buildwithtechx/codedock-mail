@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 )
@@ -52,4 +54,29 @@ func (s *Store) ListMailboxes(ctx context.Context, domainID string) ([]models.Ma
 		mailboxes = append(mailboxes, m)
 	}
 	return mailboxes, rows.Err()
+}
+
+func (s *Store) GetMailbox(ctx context.Context, id string) (models.Mailbox, error) {
+	var m models.Mailbox
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, domain_id, local_part, address, created_at, updated_at FROM mailboxes WHERE id = $1`, id).
+		Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Mailbox{}, ErrNotFound
+		}
+		return models.Mailbox{}, fmt.Errorf("get mailbox: %w", err)
+	}
+	return m, nil
+}
+
+func (s *Store) DeleteMailbox(ctx context.Context, id string) error {
+	result, err := s.pool.Exec(ctx, `DELETE FROM mailboxes WHERE id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("delete mailbox: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

@@ -48,7 +48,9 @@ codedock-mail/
 
 - [x] Phase 1: `maild` + Postgres. One domain, mailbox CRUD via API (`internal/store` migration `001_initial`, `internal/api` routes), health endpoint.
 - [x] Phase 2: DKIM/SPF/DMARC generation + DNS instructions, LE cert expiry tracking + hourly watcher with engine reload, port-25 / PTR / rDNS checks. Issuance stays engine-side (Stalwart ACME provider + per-domain Automatic).
-- [ ] Phase 3: webmail container, standalone compose, Codedock one-click template + dashboard page.
+- [x] Phase 3a (this repo): full lifecycle (`GET/DELETE` domains and mailboxes), Thunderbird + Outlook autoconfig, `MAILD_API_TOKEN` auth, maild Dockerfile, webmail default (SnappyMail, see `apps/webmail-ext/DECISION.md`), adapter contract (`docs/ADAPTER.md`), live Postgres proof.
+- [ ] Phase 3b: engine config + webmail pin/branding, standalone compose boot proof.
+- [ ] Phase 3c (codedock repo): one-click template + dashboard page per `docs/ADAPTER.md`.
 - [ ] Phase 4: backups (maildir + db), quota, multi-domain, sieve filters, audit log.
 
 ## Deliverability checklist
