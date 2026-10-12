@@ -5,7 +5,7 @@ Implemented in the codedock repo; this file is the contract it builds against.
 
 ## Install
 
-Mail ships as a compose stack (see `deploy/compose.yml`): `maild` + Postgres +
+Mail ships as a compose stack (see `docker-compose.yml`): `maild` + Postgres +
 engine + webmail. Codedock deploys it like any one-click app and stores one
 reference row per install:
 

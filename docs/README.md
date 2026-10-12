@@ -38,7 +38,9 @@ hourly when anything is near expiry.
 
 ## Engine
 
-Stalwart REST management API over HTTP Basic (`STALWART_USER`, `STALWART_SECRET`).
-Principals are addressed by name. Secrets are bcrypt hashes (`$2a$...`), which
-Stalwart verifies natively. DKIM keys are generated engine-side; `maild` keeps
-only the selector, public key, and DNS record for instructions.
+Stalwart `v0.15.5` (pinned: last line with the REST management API) over HTTP
+Basic (`STALWART_USER`, `STALWART_SECRET`). Principals are addressed by name.
+Secrets are bcrypt hashes (`$2a$...`), which Stalwart verifies natively. DKIM
+keys are generated engine-side; `maild` keeps only the selector, public key,
+and DNS record for instructions. Duplicate creates surface
+`fieldAlreadyExists` in a 200 envelope, mapped to 409.

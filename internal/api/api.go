@@ -191,23 +191,27 @@ func (s *Server) domainDNS(c echo.Context) error {
 	if err != nil {
 		return writeError(c, err)
 	}
-	response := models.DNSResponse{Domain: d.Name, Records: dns.ForDomain(d.Name, "mail."+d.Name)}
+	response := models.DNSResponse{Domain: d.Name}
+	local := dns.ForDomain(d.Name, "mail."+d.Name)
 	keys, err := s.store.ListDKIMKeys(ctx, d.ID)
 	if err != nil {
 		return writeError(c, err)
 	}
 	for _, key := range keys {
 		if key.DNSRecord != "" {
-			response.Records = append(response.Records, dns.DKIMRecord(key.Selector, key.DNSRecord))
+			local = append(local, dns.DKIMRecord(key.Selector, key.DNSRecord))
 		}
 	}
 	if s.engine != nil {
 		engineRecords, err := s.engine.DNSRecords(d.Name)
 		if err != nil {
 			response.EngineError = err.Error()
+			response.Records = local
 		} else {
-			response.Records = append(response.Records, engineRecords...)
+			response.Records = dns.Merge(d.Name, local, engineRecords)
 		}
+	} else {
+		response.Records = local
 	}
 	return c.JSON(http.StatusOK, response)
 }

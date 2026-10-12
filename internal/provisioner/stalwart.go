@@ -39,9 +39,8 @@ type stalwartEnvelope struct {
 
 func (e *StalwartEngine) Provision(domain string) error {
 	_, err := e.do(http.MethodPost, "/api/principal", map[string]string{
-		"type":        "domain",
-		"name":        domain,
-		"description": "managed by codedock-mail",
+		"type": "domain",
+		"name": domain,
 	})
 	return err
 }
@@ -76,20 +75,49 @@ func (e *StalwartEngine) CreateDKIM(domain, selector, algorithm string) (DKIMRes
 	if err != nil {
 		return DKIMResult{}, err
 	}
-	var data struct {
-		Selector  string `json:"selector"`
-		PublicKey string `json:"public_key"`
-		DNSRecord string `json:"dns_record"`
-	}
+	result := DKIMResult{Selector: selector}
 	if len(raw) > 0 {
+		var data struct {
+			Selector  string `json:"selector"`
+			PublicKey string `json:"public_key"`
+			DNSRecord string `json:"dns_record"`
+		}
 		if err := json.Unmarshal(raw, &data); err != nil {
 			return DKIMResult{}, fmt.Errorf("stalwart: decode dkim response: %w", err)
 		}
+		if data.Selector != "" {
+			result.Selector = data.Selector
+		}
+		result.PublicKey = data.PublicKey
+		result.DNSRecord = data.DNSRecord
 	}
-	if data.Selector == "" {
-		data.Selector = selector
+	if result.DNSRecord == "" {
+		records, err := e.DNSRecords(domain)
+		if err != nil {
+			return DKIMResult{}, err
+		}
+		for _, record := range records {
+			if record.Type == "TXT" && strings.HasPrefix(record.Name, result.Selector+"._domainkey.") {
+				result.DNSRecord = record.Value
+				result.PublicKey = dkimPublicKey(record.Value)
+				break
+			}
+		}
+		if result.DNSRecord == "" {
+			return DKIMResult{}, fmt.Errorf("stalwart: dkim key created but no dns record found")
+		}
 	}
-	return DKIMResult{Selector: data.Selector, PublicKey: data.PublicKey, DNSRecord: data.DNSRecord}, nil
+	return result, nil
+}
+
+func dkimPublicKey(txt string) string {
+	for _, part := range strings.Split(txt, ";") {
+		part = strings.TrimSpace(part)
+		if value, ok := strings.CutPrefix(part, "p="); ok {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
 }
 
 func (e *StalwartEngine) DNSRecords(domain string) ([]dns.Record, error) {
@@ -117,7 +145,7 @@ func (e *StalwartEngine) DNSRecords(domain string) ([]dns.Record, error) {
 }
 
 func (e *StalwartEngine) Health() error {
-	_, err := e.do(http.MethodGet, "/api/account", nil)
+	_, err := e.do(http.MethodGet, "/api/principal?limit=1", nil)
 	return err
 }
 

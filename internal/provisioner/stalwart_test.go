@@ -153,8 +153,8 @@ func TestHealth(t *testing.T) {
 	if err := engine.Health(); err != nil {
 		t.Fatalf("health: %v", err)
 	}
-	if captured.method != http.MethodGet || captured.path != "/api/account" {
-		t.Fatalf("expected GET /api/account, got %s %s", captured.method, captured.path)
+	if captured.method != http.MethodGet || captured.path != "/api/principal" {
+		t.Fatalf("expected GET /api/principal, got %s %s", captured.method, captured.path)
 	}
 }
 
@@ -181,6 +181,25 @@ func TestRemoveDomain(t *testing.T) {
 	}
 	if captured.method != http.MethodDelete || captured.path != "/api/principal/example.com" {
 		t.Fatalf("expected DELETE /api/principal/example.com, got %s %s", captured.method, captured.path)
+	}
+}
+
+func TestCreateDKIMFallsBackToDNSRecords(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			_, _ = w.Write([]byte(`{"data":null}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{"data":[{"type":"TXT","name":"mail._domainkey.example.com.","content":"v=DKIM1; k=ed25519; p=abc123"}]}`))
+	}))
+	defer server.Close()
+	engine := NewStalwart(server.URL, "admin", "secret")
+	result, err := engine.CreateDKIM("example.com", "mail", "Ed25519")
+	if err != nil {
+		t.Fatalf("create dkim: %v", err)
+	}
+	if result.DNSRecord != "v=DKIM1; k=ed25519; p=abc123" || result.PublicKey != "abc123" {
+		t.Fatalf("unexpected fallback result %+v", result)
 	}
 }
 

@@ -1,4 +1,4 @@
-ARG UPSTREAM_IMAGE=ghcr.io/the-djmaze/snappymail:latest
+ARG UPSTREAM_IMAGE=djmaze/snappymail:2.38.2
 
 FROM ${UPSTREAM_IMAGE}
 

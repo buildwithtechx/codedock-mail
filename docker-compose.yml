@@ -2,7 +2,8 @@ name: codedock-mail
 
 services:
   maild:
-    build: ..
+    build: .
+    image: ghcr.io/buildwithtechx/codedock-mail:latest
     environment:
       PORT: 8081
       DATABASE_URL: postgres://mail:mail@postgres:5432/mail?sslmode=disable
@@ -17,6 +18,7 @@ services:
       - engine
     ports:
       - "8081:8081"
+    restart: unless-stopped
 
   postgres:
     image: postgres:16-alpine
@@ -26,22 +28,33 @@ services:
       POSTGRES_DB: mail
     volumes:
       - mail_db:/var/lib/postgresql/data
+    restart: unless-stopped
 
   engine:
-    image: stalwartlabs/stalwart:latest
+    image: stalwartlabs/stalwart:v0.15.5
     ports:
       - "25:25"
       - "465:465"
       - "587:587"
       - "143:143"
       - "993:993"
+      - "110:110"
+      - "995:995"
+      - "4190:4190"
     volumes:
-      - mail_data:/opt/stalwart-mail
+      - ./deploy/stalwart.toml:/opt/stalwart/etc/config.toml:ro
+      - stalwart_data:/opt/stalwart/data
+    restart: unless-stopped
+
   webmail:
-    build: ../apps/webmail-ext
+    image: djmaze/snappymail:2.38.2
     ports:
-      - "4080:8080"
+      - "8888:8888"
+    volumes:
+      - snappymail_data:/var/lib/snappymail
+    restart: unless-stopped
 
 volumes:
   mail_db:
-  mail_data:
+  stalwart_data:
+  snappymail_data:
