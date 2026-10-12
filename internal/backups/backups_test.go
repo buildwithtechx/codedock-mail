@@ -1,6 +1,7 @@
 package backups
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -47,8 +48,11 @@ func TestDeleteRemovesFiles(t *testing.T) {
 func writeManifest(t *testing.T, dir, id string, created time.Time) {
 	t.Helper()
 	manifest := models.BackupManifest{ID: id, CreatedAt: created, Path: filepath.Join(dir, id+".sql.gz")}
-	raw := `{"id":"` + id + `","createdAt":"` + created.UTC().Format(time.RFC3339) + `","path":"` + manifest.Path + `"}`
-	if err := os.WriteFile(filepath.Join(dir, id+".sql.gz.json"), []byte(raw), 0o644); err != nil {
+	raw, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatalf("encode manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, id+".sql.gz.json"), raw, 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 }
