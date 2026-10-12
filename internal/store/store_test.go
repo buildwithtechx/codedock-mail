@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"testing"
+
+	"github.com/buildwithtechx/codedock-mail/internal/models"
 )
 
 func openTestStore(t *testing.T) *Store {
@@ -47,6 +49,41 @@ func TestCreateAndListDomains(t *testing.T) {
 	}
 	if len(listed) != 1 || listed[0].ID != created.ID {
 		t.Fatalf("expected one domain %s, got %+v", created.ID, listed)
+	}
+}
+
+func TestDKIMKeys(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	d, err := st.CreateDomain(ctx, "example.com")
+	if err != nil {
+		t.Fatalf("create domain: %v", err)
+	}
+	created, err := st.CreateDKIMKey(ctx, models.DKIMKey{
+		DomainID:  d.ID,
+		Selector:  "mail",
+		Algorithm: "Ed25519",
+		PublicKey: "abc",
+		DNSRecord: "v=DKIM1; k=ed25519; p=abc",
+	})
+	if err != nil {
+		t.Fatalf("create dkim key: %v", err)
+	}
+	if created.Selector != "mail" || created.PublicKey != "abc" {
+		t.Fatalf("unexpected key %+v", created)
+	}
+	if _, err := st.CreateDKIMKey(ctx, models.DKIMKey{DomainID: d.ID, Selector: "mail", Algorithm: "Ed25519"}); !errors.Is(err, ErrExists) {
+		t.Fatalf("duplicate dkim selector should return ErrExists, got %v", err)
+	}
+	latest, err := st.GetDKIMKey(ctx, d.ID)
+	if err != nil {
+		t.Fatalf("get dkim key: %v", err)
+	}
+	if latest.ID != created.ID {
+		t.Fatalf("expected latest key %s, got %s", created.ID, latest.ID)
+	}
+	if _, err := st.GetDKIMKey(ctx, "missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("missing domain should return ErrNotFound, got %v", err)
 	}
 }
 

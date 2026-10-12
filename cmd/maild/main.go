@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/buildwithtechx/codedock-mail/internal/api"
+	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
 	"github.com/buildwithtechx/codedock-mail/internal/store"
 )
 
@@ -25,13 +26,27 @@ func main() {
 		slog.Error("run migrations", "error", err)
 		os.Exit(1)
 	}
+	var engine provisioner.Engine
+	if stalwartURL := os.Getenv("STALWART_URL"); stalwartURL != "" {
+		engine = provisioner.NewStalwart(stalwartURL, envOr("STALWART_USER", "admin"), os.Getenv("STALWART_SECRET"))
+		slog.Info("engine configured", "url", stalwartURL)
+	} else {
+		slog.Info("engine not configured, running local-only")
+	}
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
 	}
-	srv := api.New(st)
+	srv := api.New(st, engine)
 	if err := srv.Start(":" + port); err != nil {
 		slog.Error("start server", "error", err)
 		os.Exit(1)
 	}
+}
+
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
 }

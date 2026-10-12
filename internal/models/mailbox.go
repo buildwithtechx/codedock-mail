@@ -14,3 +14,8 @@ type Mailbox struct {
 type CreateMailboxInput struct {
 	LocalPart string `json:"localPart"`
 }
+
+type MailboxCredentials struct {
+	Mailbox
+	Password string `json:"password,omitempty"`
+}

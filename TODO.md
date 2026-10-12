@@ -14,7 +14,10 @@ Standalone mail product. Own repo, own release. Installable in Codedock via HTTP
 ## Engine choice (decided: Stalwart)
 
 - Stalwart (single Rust binary: SMTP+IMAP+JMAP+Sieve, native Postgres, built-in SPF/DKIM/ARC/DMARC) behind the `Engine` interface (`Provision`, `AddMailbox`, `Health`) in `internal/provisioner`, so the backend stays swappable.
-- [ ] Implement `StalwartEngine` against the Stalwart admin API (currently a stub returning not-implemented).
+- [x] Engine client: Stalwart REST (`Provision`, `AddMailbox`, `RemoveMailbox`, `CreateDKIM`, `DNSRecords`, `Health`), bcrypt-hashed secrets, mailbox password returned once at creation and never stored. Watch Stalwart v0.16 JMAP management migration.
+- [x] DKIM metadata store (`002_dkim_metadata`) + `POST /api/domains/:id/dkim`, DNS instructions via `GET /api/domains/:id/dns` (local MX/SPF/DMARC/DKIM + live engine records).
+- [x] Deliverability checks via `GET /api/domains/:id/checks` (MX/SPF/DMARC/DKIM, port-25 egress, optional PTR via `?ip=`).
+- [ ] LE certs: engine-side ACME config + `certs` expiry tracking.
 
 ## Repo layout
 
@@ -44,7 +47,7 @@ codedock-mail/
 ## MVP phases
 
 - [x] Phase 1: `maild` + Postgres. One domain, mailbox CRUD via API (`internal/store` migration `001_initial`, `internal/api` routes), health endpoint.
-- [ ] Phase 2: DKIM/SPF/DMARC generation + DNS instructions, LE certs + cron renewal, port-25 / PTR / rDNS checks.
+- [ ] Phase 2: LE certs + cron renewal, port-25 / PTR / rDNS checks.
 - [ ] Phase 3: webmail container, standalone compose, Codedock one-click template + dashboard page.
 - [ ] Phase 4: backups (maildir + db), quota, multi-domain, sieve filters, audit log.
 
