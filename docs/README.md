@@ -13,14 +13,23 @@ Specs and runbooks. The docs site lives in `apps/docs`; this folder holds the so
 local-only: domains, mailboxes, and DKIM metadata are stored, but nothing is
 provisioned on an engine and mailbox creation returns no password.
 
-| Method | Path | Notes |
-| ------ | ---- | ----- |
-| GET | `/health` | liveness |
-| GET/POST | `/api/domains` | engine provisioned first when configured |
-| GET/POST | `/api/domains/:id/mailboxes` | password returned once on create, never stored |
-| POST | `/api/domains/:id/dkim` | engine generates the key, metadata stored |
-| GET | `/api/domains/:id/dns` | local MX/SPF/DMARC/DKIM plus live engine records |
-| GET | `/api/domains/:id/checks` | MX/SPF/DMARC/DKIM, port-25 egress, `?ip=` adds PTR |
+| Method   | Path                         | Notes                                              |
+| -------- | ---------------------------- | -------------------------------------------------- |
+| GET      | `/health`                    | liveness                                           |
+| GET/POST | `/api/domains`               | engine provisioned first when configured           |
+| GET/POST | `/api/domains/:id/mailboxes` | password returned once on create, never stored     |
+| POST     | `/api/domains/:id/dkim`      | engine generates the key, metadata stored          |
+| GET      | `/api/domains/:id/dns`       | local MX/SPF/DMARC/DKIM plus live engine records   |
+| GET      | `/api/domains/:id/checks`    | MX/SPF/DMARC/DKIM, port-25 egress, `?ip=` adds PTR |
+| GET      | `/api/certs`                 | tracked certificate expiries |
+| POST     | `/api/certs/probe`           | TLS-handshake expiry probe (implicit TLS ports), upserts tracking row |
+
+## Certs
+
+Issuance stays engine-side: enable an ACME provider in Stalwart and set each
+domain to Automatic. `maild` tracks expiry with a TLS probe (no engine
+dependency), warns below 30 days, and calls `GET /api/reload/certificate`
+hourly when anything is near expiry.
 
 ## Engine
 
@@ -28,4 +37,3 @@ Stalwart REST management API over HTTP Basic (`STALWART_USER`, `STALWART_SECRET`
 Principals are addressed by name. Secrets are bcrypt hashes (`$2a$...`), which
 Stalwart verifies natively. DKIM keys are generated engine-side; `maild` keeps
 only the selector, public key, and DNS record for instructions.
-

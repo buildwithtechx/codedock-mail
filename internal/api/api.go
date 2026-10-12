@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/buildwithtechx/codedock-mail/internal/certs"
 	"github.com/buildwithtechx/codedock-mail/internal/dns"
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
@@ -30,6 +31,8 @@ func New(s *store.Store, engine provisioner.Engine) *Server {
 	e.POST("/api/domains/:id/dkim", srv.createDKIM)
 	e.GET("/api/domains/:id/dns", srv.domainDNS)
 	e.GET("/api/domains/:id/checks", srv.domainChecks)
+	e.GET("/api/certs", srv.listCerts)
+	e.POST("/api/certs/probe", srv.probeCert)
 	return srv
 }
 
@@ -209,6 +212,37 @@ func (s *Server) domainChecks(c echo.Context) error {
 		}
 	}
 	return c.JSON(http.StatusOK, report)
+}
+
+func (s *Server) listCerts(c echo.Context) error {
+	certs, err := s.store.ListCerts(c.Request().Context())
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(http.StatusOK, certs)
+}
+
+func (s *Server) probeCert(c echo.Context) error {
+	var input models.ProbeCertInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid body"})
+	}
+	input.Host = strings.TrimSpace(input.Host)
+	if input.Host == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "host is required"})
+	}
+	if input.Port == 0 {
+		input.Port = 443
+	}
+	expiry, err := certs.Probe(c.Request().Context(), input.Host, input.Port)
+	if err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	cert, err := s.store.UpsertCert(c.Request().Context(), input.Host, expiry)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(http.StatusOK, cert)
 }
 
 func writeError(c echo.Context, err error) error {

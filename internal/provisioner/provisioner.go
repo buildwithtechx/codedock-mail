@@ -14,6 +14,7 @@ type Engine interface {
 	RemoveMailbox(address string) error
 	CreateDKIM(domain, selector, algorithm string) (DKIMResult, error)
 	DNSRecords(domain string) ([]dns.Record, error)
+	ReloadCertificates() error
 	Health() error
 }
 

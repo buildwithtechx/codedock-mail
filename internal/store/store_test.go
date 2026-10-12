@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 )
@@ -113,5 +114,40 @@ func TestCreateMailboxBuildsAddress(t *testing.T) {
 	}
 	if len(listed) != 1 || listed[0].Address != "alice@example.com" {
 		t.Fatalf("expected one mailbox alice@example.com, got %+v", listed)
+	}
+}
+
+func TestCertsUpsertAndExpiring(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	soon := time.Now().Add(time.Hour)
+	later := time.Now().Add(90 * 24 * time.Hour)
+	first, err := st.UpsertCert(ctx, "mail.example.com", soon)
+	if err != nil {
+		t.Fatalf("upsert cert: %v", err)
+	}
+	second, err := st.UpsertCert(ctx, "mail.example.com", later)
+	if err != nil {
+		t.Fatalf("upsert cert again: %v", err)
+	}
+	if second.ID != first.ID {
+		t.Fatalf("expected same cert row on hostname conflict, got %s then %s", first.ID, second.ID)
+	}
+	expiring, err := st.ListExpiring(ctx, time.Now().Add(30*24*time.Hour))
+	if err != nil {
+		t.Fatalf("list expiring: %v", err)
+	}
+	if len(expiring) != 0 {
+		t.Fatalf("expected no expiring certs, got %+v", expiring)
+	}
+	if _, err := st.UpsertCert(ctx, "old.example.com", time.Now().Add(-time.Hour)); err != nil {
+		t.Fatalf("upsert expired cert: %v", err)
+	}
+	expiring, err = st.ListExpiring(ctx, time.Now())
+	if err != nil {
+		t.Fatalf("list expiring: %v", err)
+	}
+	if len(expiring) != 1 || expiring[0].Hostname != "old.example.com" {
+		t.Fatalf("expected one expired cert, got %+v", expiring)
 	}
 }

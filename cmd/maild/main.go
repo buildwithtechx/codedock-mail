@@ -4,14 +4,18 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/buildwithtechx/codedock-mail/internal/api"
+	"github.com/buildwithtechx/codedock-mail/internal/certs"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
 	"github.com/buildwithtechx/codedock-mail/internal/store"
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		dsn = "postgres://mail:mail@localhost:5432/mail?sslmode=disable"
@@ -33,6 +37,12 @@ func main() {
 	} else {
 		slog.Info("engine not configured, running local-only")
 	}
+	watcher := certs.NewWatcher(st, engine, certs.DefaultInterval, certs.DefaultWarnBefore)
+	go func() {
+		if err := watcher.Run(ctx); err != nil && err != context.Canceled {
+			slog.Error("cert watcher stopped", "error", err)
+		}
+	}()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"

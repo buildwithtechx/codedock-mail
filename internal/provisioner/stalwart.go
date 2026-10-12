@@ -116,6 +116,11 @@ func (e *StalwartEngine) Health() error {
 	return err
 }
 
+func (e *StalwartEngine) ReloadCertificates() error {
+	_, err := e.do(http.MethodGet, "/api/reload/certificate", nil)
+	return err
+}
+
 func (e *StalwartEngine) do(method, path string, body any) (json.RawMessage, error) {
 	var reader io.Reader
 	if body != nil {

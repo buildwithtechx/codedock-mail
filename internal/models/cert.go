@@ -9,3 +9,8 @@ type Cert struct {
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
+
+type ProbeCertInput struct {
+	Host string `json:"host"`
+	Port int    `json:"port"`
+}

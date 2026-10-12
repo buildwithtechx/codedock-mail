@@ -153,8 +153,21 @@ func TestHealth(t *testing.T) {
 	if err := engine.Health(); err != nil {
 		t.Fatalf("health: %v", err)
 	}
-	if captured.path != "/api/account" {
-		t.Fatalf("unexpected path %s", captured.path)
+	if captured.method != http.MethodGet || captured.path != "/api/account" {
+		t.Fatalf("expected GET /api/account, got %s %s", captured.method, captured.path)
+	}
+}
+
+func TestReloadCertificates(t *testing.T) {
+	var captured capturedRequest
+	server := newTestServer(t, 200, `{"data":{"warnings":{},"errors":{}}}`, &captured)
+	defer server.Close()
+	engine := NewStalwart(server.URL, "admin", "secret")
+	if err := engine.ReloadCertificates(); err != nil {
+		t.Fatalf("reload certificates: %v", err)
+	}
+	if captured.method != http.MethodGet || captured.path != "/api/reload/certificate" {
+		t.Fatalf("expected GET /api/reload/certificate, got %s %s", captured.method, captured.path)
 	}
 }
 

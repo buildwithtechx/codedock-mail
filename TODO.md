@@ -47,7 +47,7 @@ codedock-mail/
 ## MVP phases
 
 - [x] Phase 1: `maild` + Postgres. One domain, mailbox CRUD via API (`internal/store` migration `001_initial`, `internal/api` routes), health endpoint.
-- [ ] Phase 2: LE certs + cron renewal, port-25 / PTR / rDNS checks.
+- [x] Phase 2: DKIM/SPF/DMARC generation + DNS instructions, LE cert expiry tracking + hourly watcher with engine reload, port-25 / PTR / rDNS checks. Issuance stays engine-side (Stalwart ACME provider + per-domain Automatic).
 - [ ] Phase 3: webmail container, standalone compose, Codedock one-click template + dashboard page.
 - [ ] Phase 4: backups (maildir + db), quota, multi-domain, sieve filters, audit log.
 
