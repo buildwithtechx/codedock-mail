@@ -3,7 +3,7 @@
 Proves codedock-mail against a real domain: DNS published, checks green,
 send/receive round-trip. Ticks the deliverability checklist for real.
 
-Driver script: `deploy/live_proof.py` (Python 3, standard library only).
+Driver script: `scripts/live-proof.py` (Python 3, standard library only).
 It never publishes DNS for you; registrars differ, so that step stays manual.
 
 ## 0. Prerequisites
@@ -12,13 +12,13 @@ It never publishes DNS for you; registrars differ, so that step stays manual.
   reachable inbound (see `deploy/README.md`), outbound port 25 unblocked
   by the provider, and PTR/rDNS set to `mail.<domain>`.
 - A domain whose DNS you control.
-- The stack up on the VPS (`docker compose up -d`), `maild` reachable,
+- The stack up on the VPS (`docker compose -f docker/docker-compose.yml up -d`), `maild` reachable,
   `MAILD_API_TOKEN` and `STALWART_SECRET` set.
 
 ## 1. Setup: domain, DKIM, proof mailbox
 
 ```bash
-python3 deploy/live_proof.py setup --maild http://<host>:8081 \
+python3 scripts/live-proof.py setup --maild http://<host>:8081 \
   --token "$MAILD_API_TOKEN" --domain example.com
 ```
 
@@ -36,7 +36,7 @@ Publish every record from step 1 at your registrar, plus:
 Then poll until green:
 
 ```bash
-python3 deploy/live_proof.py checks --maild http://<host>:8081 \
+python3 scripts/live-proof.py checks --maild http://<host>:8081 \
   --token "$MAILD_API_TOKEN" --domain example.com --ip <vps-ip>
 ```
 
@@ -46,7 +46,7 @@ DNS propagation can take minutes; the poller retries 10 times by default.
 ## 3. Round-trip: send and receive
 
 ```bash
-python3 deploy/live_proof.py roundtrip --host mail.example.com \
+python3 scripts/live-proof.py roundtrip --host mail.example.com \
   --user proof@example.com
 ```
 

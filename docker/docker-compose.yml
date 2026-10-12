@@ -2,7 +2,9 @@ name: codedock-mail
 
 services:
   maild:
-    build: .
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
     image: ghcr.io/buildwithtechx/codedock-mail:latest
     environment:
       PORT: 8081
@@ -47,7 +49,7 @@ services:
       - "995:995"
       - "4190:4190"
     volumes:
-      - ./deploy/stalwart.toml:/opt/stalwart/etc/config.toml:ro
+      - ../deploy/stalwart.toml:/opt/stalwart/etc/config.toml:ro
       - stalwart_data:/opt/stalwart/data
     restart: unless-stopped
 

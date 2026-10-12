@@ -1,13 +1,13 @@
 # deploy
 
-`docker-compose.yml` at the repo root is the stack: `maild` + Postgres +
+`docker/docker-compose.yml` is the stack: `maild` + Postgres +
 engine + webmail. Point any compose-based setup at the repo and it works —
 plain Docker, Coolify, Dokploy, and the like.
 
 ```bash
 cp .env.example .env
 $EDITOR deploy/stalwart.toml .env
-docker compose up -d
+docker compose -f docker/docker-compose.yml up -d
 ```
 
 `stalwart.toml` is mounted read-only into the engine; the data volume holds
@@ -24,7 +24,7 @@ copy those into `.env` as `STALWART_SECRET` instead.
 3. Drive everything after that through `maild`: create the domain and DKIM
    key, publish the DNS records it returns, and watch
    `GET /api/domains/:id/checks`. For a first real domain, follow
-   `docs/LIVE_PROOF.md` (`deploy/live_proof.py`).
+   `docs/LIVE_PROOF.md` (`scripts/live-proof.py`).
 4. Backups land in the `mail_backups` volume: a Postgres dump plus a
    tarball of the engine data (`MAIL_DATA_DIR`, mounted read-only).
    The db restores via `POST /api/backups/:id/restore`; the mail

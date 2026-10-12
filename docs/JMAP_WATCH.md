@@ -32,5 +32,5 @@ the signal to start the migration, not to bump the pin.
 ## Manual check
 
 ```bash
-python3 -c "import json,urllib.request; print(json.load(urllib.request.urlopen('https://api.github.com/repos/stalwartlabs/stalwart/releases/latest'))['tag_name'])"
+bash scripts/stalwart-pin.sh
 ```

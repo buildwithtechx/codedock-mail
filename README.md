@@ -10,7 +10,7 @@ See `TODO.md` for the build order and `docs/` for specs and runbooks.
 
 - **Tier 1 (supported):** Codedock-managed installs (one-click template,
   `/mail` dashboard page) and plain-compose VPS installs
-  (`docker-compose.yml`, see `deploy/README.md`).
+  (`docker/docker-compose.yml`, see `deploy/README.md`).
 - **Tier 2 (best-effort):** anything else that speaks compose (Coolify,
   Dokploy, and the like) using the same root compose file. No
   platform-specific code ships for these; the file is the contract.

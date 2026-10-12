@@ -37,7 +37,7 @@ codedock-mail/
   apps/admin/           React admin (embeddable, standalone dev)
   apps/docs/            docs site (install, DNS, deliverability, API)
   apps/webmail-ext/     webmail wrapper (Dockerfile FROM upstream + branding, plugins, defaults, auth bridge)
-  deploy/compose.yml    standalone install
+  docker/               compose stack + maild Dockerfile
   docs/                 specs + runbooks (DNS checklist, port-25, engine decision)
 ```
 
@@ -61,10 +61,10 @@ codedock-mail/
 
 | Platform                    | Asset                                         | Notes                                                     |
 | --------------------------- | --------------------------------------------- | --------------------------------------------------------- |
-| Any VPS / Coolify / Dokploy | `docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md`          |
+| Any VPS / Coolify / Dokploy | `docker/docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md`          |
 
 - [x] Phase 4: backups (maildir tarball + db pg_dump via `POST /api/backups`, `MAIL_DATA_DIR` mount, `mail_backups` volume), quota (create + `PUT .../quota`, engine PATCH, admin editors), sieve filters (ManageSieve client + `GET/PUT .../sieve` + admin editor), audit log (`004_audit_log`, `GET /api/audit`, admin panel). Multi-domain was already supported.
-- [ ] Live-domain proof: run `docs/LIVE_PROOF.md` (`deploy/live_proof.py` setup → checks → roundtrip) against a real domain, then tick the deliverability checklist for real.
+- [ ] Live-domain proof: run `docs/LIVE_PROOF.md` (`scripts/live-proof.py` setup → checks → roundtrip) against a real domain, then tick the deliverability checklist for real.
 
 ## Deliverability checklist
 
