@@ -2,15 +2,18 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 
 	"github.com/buildwithtechx/codedock-mail/internal/api"
 	"github.com/buildwithtechx/codedock-mail/internal/backups"
 	"github.com/buildwithtechx/codedock-mail/internal/certs"
+	"github.com/buildwithtechx/codedock-mail/internal/models"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
 	"github.com/buildwithtechx/codedock-mail/internal/store"
 )
@@ -51,8 +54,38 @@ func main() {
 		port = "8081"
 	}
 	srv := api.New(st, engine, os.Getenv("MAILD_API_TOKEN"))
-	srv.SetDatabase(dsn, envOr("BACKUP_DIR", backups.Dir()))
-	srv.SetMailDataDir(os.Getenv("MAIL_DATA_DIR"))
+	backupDir := envOr("BACKUP_DIR", backups.Dir())
+	mailDataDir := os.Getenv("MAIL_DATA_DIR")
+	srv.SetDatabase(dsn, backupDir)
+	srv.SetMailDataDir(mailDataDir)
+	if spec := strings.TrimSpace(os.Getenv("BACKUP_SCHEDULE")); spec != "" {
+		retention, err := backupRetention()
+		if err != nil {
+			slog.Error("invalid backup retention", "error", err)
+			os.Exit(1)
+		}
+		scheduler, err := backups.NewScheduler(spec, retention, dsn, backupDir, mailDataDir,
+			func(ctx context.Context, manifest models.BackupManifest, err error) {
+				if err != nil {
+					slog.Error("scheduled backup failed", "error", err)
+					return
+				}
+				_, _ = st.Log(ctx, models.AuditEntry{
+					Actor:        "system",
+					Action:       "backup.create",
+					ResourceType: "backup",
+					ResourceID:   manifest.ID,
+					Detail:       manifest.Path,
+				})
+			})
+		if err != nil {
+			slog.Error("invalid backup schedule", "error", err)
+			os.Exit(1)
+		}
+		scheduler.Start()
+		defer scheduler.Stop()
+		slog.Info("scheduled backups enabled", "schedule", spec)
+	}
 	srv.RegisterAdmin()
 	if err := srv.Start(":" + port); err != nil {
 		slog.Error("start server", "error", err)
@@ -65,6 +98,18 @@ func envOr(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func backupRetention() (int, error) {
+	raw := strings.TrimSpace(os.Getenv("BACKUP_RETENTION"))
+	if raw == "" {
+		return 7, nil
+	}
+	parsed, err := strconv.Atoi(raw)
+	if err != nil || parsed < 0 {
+		return 0, fmt.Errorf("BACKUP_RETENTION must be a whole number 0 or above")
+	}
+	return parsed, nil
 }
 
 func loadDotEnv(path string) {

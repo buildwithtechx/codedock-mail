@@ -48,3 +48,28 @@ func TestLoadDotEnvMissingFile(t *testing.T) {
 	t.Chdir(t.TempDir())
 	loadDotEnv(".env")
 }
+
+func TestBackupRetentionDefaults(t *testing.T) {
+	t.Setenv("BACKUP_RETENTION", "")
+	parsed, err := backupRetention()
+	if err != nil || parsed != 7 {
+		t.Fatalf("expected default 7, got %d %v", parsed, err)
+	}
+}
+
+func TestBackupRetentionParses(t *testing.T) {
+	t.Setenv("BACKUP_RETENTION", "0")
+	parsed, err := backupRetention()
+	if err != nil || parsed != 0 {
+		t.Fatalf("expected unlimited 0, got %d %v", parsed, err)
+	}
+}
+
+func TestBackupRetentionRejectsGarbage(t *testing.T) {
+	for _, raw := range []string{"abc", "-1", "1.5"} {
+		t.Setenv("BACKUP_RETENTION", raw)
+		if _, err := backupRetention(); err == nil {
+			t.Fatalf("expected error for %q", raw)
+		}
+	}
+}

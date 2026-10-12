@@ -2,8 +2,11 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"os"
+	"syscall"
 	"time"
 )
 
@@ -27,6 +30,25 @@ func LookupMXHosts(ctx context.Context, domain string) ([]string, error) {
 		hosts = append(hosts, record.Host)
 	}
 	return hosts, nil
+}
+
+func TCPPortClosed(ctx context.Context, addr string) bool {
+	dialer := net.Dialer{Timeout: 3 * time.Second}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return dialRefused(err)
+	}
+	conn.Close()
+	return false
+}
+
+func dialRefused(err error) bool {
+	var opErr *net.OpError
+	if !errors.As(err, &opErr) || opErr.Op != "dial" {
+		return false
+	}
+	var syscallErr *os.SyscallError
+	return errors.As(opErr.Err, &syscallErr) && errors.Is(syscallErr.Err, syscall.ECONNREFUSED)
 }
 
 func CheckPTR(ctx context.Context, ip string) (string, error) {

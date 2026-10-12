@@ -21,6 +21,12 @@ type UpdateQuotaInput struct {
 	QuotaMB int64 `json:"quotaMb"`
 }
 
+type MailboxUsage struct {
+	Address   string `json:"address"`
+	UsedBytes int64  `json:"usedBytes"`
+	QuotaMB   int64  `json:"quotaMb"`
+}
+
 type SieveInput struct {
 	Password string `json:"password"`
 	Name     string `json:"name"`

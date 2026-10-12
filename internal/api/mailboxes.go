@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"github.com/buildwithtechx/codedock-mail/internal/imap"
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
 )
@@ -104,4 +105,24 @@ func (s *Server) updateQuota(c echo.Context) error {
 	}
 	s.audit(ctx, "mailbox.quota", "mailbox", m.ID, m.Address)
 	return c.JSON(http.StatusOK, updated)
+}
+
+func (s *Server) getUsage(c echo.Context) error {
+	if s.engine == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "engine not configured"})
+	}
+	password := strings.TrimSpace(c.Request().Header.Get("X-Mailbox-Password"))
+	if password == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "X-Mailbox-Password header is required"})
+	}
+	ctx := c.Request().Context()
+	m, err := s.mailboxInDomain(ctx, c.Param("domainId"), c.Param("mailboxId"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	used, err := imap.GetQuota(ctx, s.engine.ImapAddr(), m.Address, password)
+	if err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, models.MailboxUsage{Address: m.Address, UsedBytes: used, QuotaMB: m.QuotaMB})
 }

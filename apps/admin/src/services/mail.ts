@@ -2,6 +2,7 @@ import type {
   DkimKey,
   Mailbox,
   MailboxCredentials,
+  MailboxUsage,
   MailCert,
   MailCheckReport,
   MailDnsResponse,
@@ -107,6 +108,23 @@ export const mailService = {
   listCerts: async (): Promise<MailCert[]> => {
     try {
       return await apiClient.get<MailCert[]>('/api/certs');
+    } catch (err) {
+      throw handleApiError(err);
+    }
+  },
+
+  getUsage: async (
+    domainId: string,
+    mailboxId: string,
+    password: string
+  ): Promise<MailboxUsage> => {
+    try {
+      return await apiClient.get<MailboxUsage>(
+        `/api/domains/${domainId}/mailboxes/${mailboxId}/usage`,
+        {
+          headers: { 'X-Mailbox-Password': password },
+        }
+      );
     } catch (err) {
       throw handleApiError(err);
     }

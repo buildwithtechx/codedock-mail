@@ -26,9 +26,13 @@ copy those into `.env` as `STALWART_SECRET` instead.
    `GET /api/domains/:id/checks`. For a first real domain, follow
    `docs/LIVE_PROOF.md` (`scripts/live-proof.py`).
 4. Backups land in the `mail_backups` volume: a Postgres dump plus a
-   tarball of the engine data (`MAIL_DATA_DIR`, mounted read-only).
-   The db restores via `POST /api/backups/:id/restore`; the mail
-   archive restores by hand with the engine stopped.
+   tarball of the engine data (`MAIL_DATA_DIR`). The db restores via
+   `POST /api/backups/:id/restore`; the mail archive restores via
+   `POST /api/backups/:id/restore-mail`, which refuses while the
+   engine is up and snapshots the current data dir first — so stop
+   the engine, restore, start it again. Set `BACKUP_SCHEDULE` (cron,
+   e.g. `0 3 * * *`) for unattended runs; `BACKUP_RETENTION` keeps
+   that many newest backups (`0` keeps all).
 
 ## Different mechanism
 

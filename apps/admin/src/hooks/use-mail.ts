@@ -88,6 +88,14 @@ export const useMailChecks = (domainId?: string) =>
 export const useMailCerts = () =>
   useQuery({ queryKey: ['mail-certs'], queryFn: () => mailService.listCerts() });
 
+export const useMailboxUsage = (domainId?: string, mailboxId?: string) =>
+  useMutation({
+    mutationFn: (password: string) => {
+      if (!domainId || !mailboxId) throw new Error('No mailbox selected');
+      return mailService.getUsage(domainId, mailboxId, password);
+    },
+  });
+
 export const useLoadSieve = (domainId?: string, mailboxId?: string) =>
   useMutation({
     mutationFn: (password: string) => {

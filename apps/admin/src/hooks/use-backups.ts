@@ -20,6 +20,11 @@ export const useRestoreBackup = () => {
   });
 };
 
+export const useRestoreMail = () =>
+  useMutation({
+    mutationFn: (id: string) => backupService.restoreMail(id),
+  });
+
 export const useDeleteBackup = () => {
   const qc = useQueryClient();
   return useMutation({

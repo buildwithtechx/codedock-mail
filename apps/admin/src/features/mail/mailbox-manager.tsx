@@ -10,38 +10,9 @@ import {
   useCreateMailbox,
   useDeleteMailbox,
   useListMailboxes,
-  useUpdateQuota,
 } from '#/hooks/use-mail';
-import type { Mailbox } from '#/interfaces/mail';
-
-function QuotaEditor({ domainId, mailbox }: { domainId: string; mailbox: Mailbox }) {
-  const [quota, setQuota] = useState(String(mailbox.quotaMb));
-  const updateQuota = useUpdateQuota(domainId);
-
-  return (
-    <span className="flex items-center gap-2">
-      <Input
-        className="h-8 w-20"
-        inputMode="numeric"
-        aria-label={`Quota in MB for ${mailbox.address}`}
-        value={quota}
-        onChange={(e) => setQuota(e.target.value)}
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={updateQuota.isPending}
-        onClick={() => {
-          const parsed = Number(quota);
-          if (!Number.isInteger(parsed) || parsed < 0) return;
-          updateQuota.mutate({ mailboxId: mailbox.id, quotaMb: parsed });
-        }}
-      >
-        Save
-      </Button>
-    </span>
-  );
-}
+import { QuotaEditor } from './quota-editor';
+import { UsageChecker } from './usage-checker';
 
 export function MailboxManager({
   domainId,
@@ -138,6 +109,7 @@ export function MailboxManager({
                 <span className="font-mono text-sm">{mailbox.address}</span>
                 <span className="flex items-center gap-2">
                   <QuotaEditor domainId={domainId} mailbox={mailbox} />
+                  <UsageChecker domainId={domainId} mailbox={mailbox} />
                   <Button
                     variant="ghost"
                     size="icon-sm"

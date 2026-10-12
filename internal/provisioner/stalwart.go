@@ -158,11 +158,18 @@ func (e *StalwartEngine) Health() error {
 }
 
 func (e *StalwartEngine) SieveAddr() string {
-	host := e.baseURL
+	return net.JoinHostPort(e.engineHost(), "4190")
+}
+
+func (e *StalwartEngine) ImapAddr() string {
+	return net.JoinHostPort(e.engineHost(), "993")
+}
+
+func (e *StalwartEngine) engineHost() string {
 	if parsed, err := url.Parse(e.baseURL); err == nil && parsed.Hostname() != "" {
-		host = parsed.Hostname()
+		return parsed.Hostname()
 	}
-	return net.JoinHostPort(host, "4190")
+	return e.baseURL
 }
 
 func (e *StalwartEngine) ReloadCertificates() error {

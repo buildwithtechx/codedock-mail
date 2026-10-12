@@ -19,6 +19,12 @@ export interface MailboxCredentials extends Mailbox {
   password?: string;
 }
 
+export interface MailboxUsage {
+  address: string;
+  usedBytes: number;
+  quotaMb: number;
+}
+
 export interface DkimKey {
   id: string;
   domainId: string;

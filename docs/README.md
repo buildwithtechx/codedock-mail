@@ -15,7 +15,7 @@ provisioned on an engine and mailbox creation returns no password.
 
 | Method   | Path                                                | Notes                                                                                      |
 | -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| GET      | `/health`                                           | liveness                                                                                   |
+| GET      | `/health`                                           | postgres + engine status, 503 when degraded                                                |
 | GET/POST | `/api/domains`                                      | engine provisioned first when configured                                                   |
 | GET/POST | `/api/domains/:id/mailboxes`                        | password returned once on create, never stored                                             |
 | POST     | `/api/domains/:id/dkim`                             | engine generates the key, metadata stored                                                  |
@@ -27,9 +27,11 @@ provisioned on an engine and mailbox creation returns no password.
 | GET      | `/api/certs`                                        | tracked certificate expiries                                                               |
 | POST     | `/api/certs/probe`                                  | TLS-handshake expiry probe (implicit TLS ports), upserts tracking row                      |
 | PUT      | `/api/domains/:domainId/mailboxes/:mailboxId/quota` | set quota in MB (`0` unlimited), engine PATCH then store                                   |
+| GET      | `/api/domains/:domainId/mailboxes/:mailboxId/usage` | IMAP QUOTA usage in bytes (needs `X-Mailbox-Password`)                                     |
 | GET/PUT  | `/api/domains/:domainId/mailboxes/:mailboxId/sieve` | ManageSieve scripts (GET needs `X-Mailbox-Password`, PUT takes `{password, name, script}`) |
 | GET/POST | `/api/backups`                                      | list manifests / take db + mail-data backup                                                |
-| POST     | `/api/backups/:id/restore`                          | restore the database dump (mail archive restores by hand, see admin panel)                 |
+| POST     | `/api/backups/:id/restore`                          | restore the database dump                                                                  |
+| POST     | `/api/backups/:id/restore-mail`                     | restore the mail archive (409 while engine runs, snapshots current data first)             |
 | DELETE   | `/api/backups/:id`                                  | delete dump, mail archive, and manifest                                                    |
 | GET      | `/api/audit`                                        | audit log, newest first (`?limit=`, max 200)                                               |
 | GET      | `/autoconfig/mail/config-v1.1.xml?emailaddress=`    | Thunderbird client config (also under `/.well-known/`)                                     |

@@ -23,7 +23,7 @@ services:
     ports:
       - "8081:8081"
     volumes:
-      - stalwart_data:/var/lib/stalwart:ro
+      - stalwart_data:/var/lib/stalwart
       - mail_backups:/data/backups
     restart: unless-stopped
 

@@ -27,6 +27,16 @@ export const backupService = {
     }
   },
 
+  restoreMail: async (id: string): Promise<{ status: string; restorePoint: string }> => {
+    try {
+      return await apiClient.post<{ status: string; restorePoint: string }>(
+        `/api/backups/${id}/restore-mail`
+      );
+    } catch (err) {
+      throw handleApiError(err);
+    }
+  },
+
   deleteBackup: async (id: string): Promise<void> => {
     try {
       await apiClient.delete<void>(`/api/backups/${id}`);

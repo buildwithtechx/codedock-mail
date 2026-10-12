@@ -58,6 +58,7 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 	e.POST("/api/domains/:id/mailboxes", srv.createMailbox)
 	e.DELETE("/api/domains/:domainId/mailboxes/:mailboxId", srv.deleteMailbox)
 	e.PUT("/api/domains/:domainId/mailboxes/:mailboxId/quota", srv.updateQuota)
+	e.GET("/api/domains/:domainId/mailboxes/:mailboxId/usage", srv.getUsage)
 	e.POST("/api/domains/:id/dkim", srv.createDKIM)
 	e.GET("/api/domains/:id/dns", srv.domainDNS)
 	e.GET("/api/domains/:id/checks", srv.domainChecks)
@@ -68,6 +69,7 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 	e.GET("/api/backups", srv.listBackups)
 	e.POST("/api/backups", srv.createBackup)
 	e.POST("/api/backups/:id/restore", srv.restoreBackup)
+	e.POST("/api/backups/:id/restore-mail", srv.restoreMail)
 	e.DELETE("/api/backups/:id", srv.deleteBackup)
 	e.GET("/api/audit", srv.listAudit)
 	e.GET("/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
@@ -86,7 +88,29 @@ func (s *Server) RegisterAdmin() {
 }
 
 func (s *Server) health(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	ctx := c.Request().Context()
+	postgres := "unconfigured"
+	engine := "unconfigured"
+	code := http.StatusOK
+	if s.store != nil {
+		postgres = "ok"
+		if err := s.store.Ping(ctx); err != nil {
+			postgres = "error"
+			code = http.StatusServiceUnavailable
+		}
+	}
+	if s.engine != nil {
+		engine = "ok"
+		if err := s.engine.Health(); err != nil {
+			engine = "error"
+			code = http.StatusServiceUnavailable
+		}
+	}
+	overall := "ok"
+	if code != http.StatusOK {
+		overall = "degraded"
+	}
+	return c.JSON(code, map[string]string{"status": overall, "postgres": postgres, "engine": engine})
 }
 
 func (s *Server) mailboxInDomain(ctx context.Context, domainID, mailboxID string) (models.Mailbox, error) {

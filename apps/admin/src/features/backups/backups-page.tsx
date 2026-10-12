@@ -9,6 +9,7 @@ import {
   useDeleteBackup,
   useListBackups,
   useRestoreBackup,
+  useRestoreMail,
 } from '#/hooks/use-backups';
 import { formatBytes } from '#/lib/utils';
 
@@ -16,6 +17,7 @@ export function BackupsPage() {
   const { data: backups = [], isLoading, isError, refetch } = useListBackups();
   const createBackup = useCreateBackup();
   const restoreBackup = useRestoreBackup();
+  const restoreMail = useRestoreMail();
   const deleteBackup = useDeleteBackup();
 
   if (isError) {
@@ -89,6 +91,31 @@ export function BackupsPage() {
                     <RotateCcw className="h-4 w-4" />
                     Restore db
                   </Button>
+                  {backup.dataPath && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      disabled={restoreMail.isPending}
+                      onClick={() => {
+                        if (
+                          !window.confirm(
+                            `Stop the engine first, then restore mail data from backup ${backup.id}?`
+                          )
+                        )
+                          return;
+                        restoreMail.mutate(backup.id, {
+                          onSuccess: (result) =>
+                            toast.success(
+                              `Mail data restored. Snapshot kept at ${result.restorePoint || 'n/a'}. Start the engine.`
+                            ),
+                        });
+                      }}
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      Restore mail
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon-sm"
@@ -105,8 +132,8 @@ export function BackupsPage() {
         </Card>
       )}
       <p className="text-muted-foreground text-xs">
-        Mail archives restore by hand: stop the engine, extract the mail archive over its data
-        directory, start the engine.
+        Mail restore refuses while the engine is up: stop the engine, restore, start it again. The
+        previous data dir is snapshotted automatically.
       </p>
     </div>
   );

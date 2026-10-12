@@ -18,6 +18,7 @@ type Engine interface {
 	DNSRecords(domain string) ([]dns.Record, error)
 	ReloadCertificates() error
 	SieveAddr() string
+	ImapAddr() string
 	Health() error
 }
 
