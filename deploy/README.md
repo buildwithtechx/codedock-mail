@@ -25,8 +25,11 @@ copy those into `.env` as `STALWART_SECRET` instead.
    key, publish the DNS records it returns, and watch
    `GET /api/domains/:id/checks`.
 
-## Different mechanisms
+## Different mechanism
 
-- `dokku/` — Dokku deploys one container per app and has no compose support.
-- `openship/` — starting-point catalog template; the catalog uses its own
-  JSON schema, not compose.
+- Dokku (`deploy/dokku/`, removed): its nginx proxy does not do plain TCP, so
+  mail ports would need proxy-disable plus manual docker flags with no
+  zero-downtime deploys, and inter-app hostnames follow its own convention.
+  None of that was verifiable here. On a Dokku host, run the compose file
+  directly instead — Dokku is Docker underneath and the mail ports don't clash
+  with its proxy.

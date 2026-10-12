@@ -95,17 +95,17 @@ func TestCreateMailboxBuildsAddress(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
-	m, err := st.CreateMailbox(ctx, d.ID, "alice")
+	m, err := st.CreateMailbox(ctx, d.ID, "alice", 0)
 	if err != nil {
 		t.Fatalf("create mailbox: %v", err)
 	}
 	if m.Address != "alice@example.com" {
 		t.Fatalf("expected alice@example.com, got %q", m.Address)
 	}
-	if _, err := st.CreateMailbox(ctx, d.ID, "alice"); !errors.Is(err, ErrExists) {
+	if _, err := st.CreateMailbox(ctx, d.ID, "alice", 0); !errors.Is(err, ErrExists) {
 		t.Fatalf("duplicate mailbox should return ErrExists, got %v", err)
 	}
-	if _, err := st.CreateMailbox(ctx, "missing", "bob"); !errors.Is(err, ErrNotFound) {
+	if _, err := st.CreateMailbox(ctx, "missing", "bob", 0); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("mailbox on missing domain should return ErrNotFound, got %v", err)
 	}
 	listed, err := st.ListMailboxes(ctx, d.ID)
@@ -114,6 +114,38 @@ func TestCreateMailboxBuildsAddress(t *testing.T) {
 	}
 	if len(listed) != 1 || listed[0].Address != "alice@example.com" {
 		t.Fatalf("expected one mailbox alice@example.com, got %+v", listed)
+	}
+	quota, err := st.CreateMailbox(ctx, d.ID, "quota", 512)
+	if err != nil {
+		t.Fatalf("create mailbox with quota: %v", err)
+	}
+	if quota.QuotaMB != 512 {
+		t.Fatalf("expected quota 512, got %d", quota.QuotaMB)
+	}
+	got, err := st.GetMailbox(ctx, quota.ID)
+	if err != nil || got.QuotaMB != 512 {
+		t.Fatalf("expected persisted quota 512, got %+v %v", got, err)
+	}
+}
+
+func TestAuditLog(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+	entry, err := st.Log(ctx, models.AuditEntry{
+		Action:       "domain.create",
+		ResourceType: "domain",
+		ResourceID:   "d-1",
+		Detail:       `{"name":"example.com"}`,
+	})
+	if err != nil {
+		t.Fatalf("log audit entry: %v", err)
+	}
+	if entry.Actor != "operator" || entry.ID == "" {
+		t.Fatalf("unexpected entry %+v", entry)
+	}
+	entries, err := st.ListAudit(ctx, 10)
+	if err != nil || len(entries) != 1 || entries[0].Action != "domain.create" {
+		t.Fatalf("expected one entry, got %+v %v", entries, err)
 	}
 }
 
@@ -166,7 +198,7 @@ func TestDomainByNameAndDelete(t *testing.T) {
 	if _, err := st.GetDomainByName(ctx, "missing.test"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
-	if _, err := st.CreateMailbox(ctx, created.ID, "alice"); err != nil {
+	if _, err := st.CreateMailbox(ctx, created.ID, "alice", 0); err != nil {
 		t.Fatalf("create mailbox: %v", err)
 	}
 	if err := st.DeleteDomain(ctx, created.ID); err != nil {
@@ -190,7 +222,7 @@ func TestMailboxGetAndDelete(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create domain: %v", err)
 	}
-	created, err := st.CreateMailbox(ctx, d.ID, "alice")
+	created, err := st.CreateMailbox(ctx, d.ID, "alice", 0)
 	if err != nil {
 		t.Fatalf("create mailbox: %v", err)
 	}

@@ -83,11 +83,14 @@ func TestAddMailboxPayload(t *testing.T) {
 	server := newTestServer(t, 200, `{}`, &captured)
 	defer server.Close()
 	engine := NewStalwart(server.URL, "admin", "secret")
-	if err := engine.AddMailbox("alice@example.com", "$2a$10$hash"); err != nil {
+	if err := engine.AddMailbox("alice@example.com", "$2a$10$hash", 1073741824); err != nil {
 		t.Fatalf("add mailbox: %v", err)
 	}
 	if captured.body["type"] != "individual" || captured.body["name"] != "alice@example.com" {
 		t.Fatalf("unexpected body %+v", captured.body)
+	}
+	if captured.body["quota"] != float64(1073741824) {
+		t.Fatalf("unexpected quota %+v", captured.body["quota"])
 	}
 	secrets, _ := captured.body["secrets"].([]any)
 	if len(secrets) != 1 || secrets[0] != "$2a$10$hash" {

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -45,13 +46,13 @@ func (e *StalwartEngine) Provision(domain string) error {
 	return err
 }
 
-func (e *StalwartEngine) AddMailbox(address, secretHash string) error {
+func (e *StalwartEngine) AddMailbox(address, secretHash string, quotaBytes int64) error {
 	_, err := e.do(http.MethodPost, "/api/principal", map[string]any{
 		"type":    "individual",
 		"name":    address,
 		"secrets": []string{secretHash},
 		"emails":  []string{address},
-		"quota":   0,
+		"quota":   quotaBytes,
 	})
 	return err
 }
@@ -147,6 +148,14 @@ func (e *StalwartEngine) DNSRecords(domain string) ([]dns.Record, error) {
 func (e *StalwartEngine) Health() error {
 	_, err := e.do(http.MethodGet, "/api/principal?limit=1", nil)
 	return err
+}
+
+func (e *StalwartEngine) SieveAddr() string {
+	host := e.baseURL
+	if parsed, err := url.Parse(e.baseURL); err == nil && parsed.Hostname() != "" {
+		host = parsed.Hostname()
+	}
+	return net.JoinHostPort(host, "4190")
 }
 
 func (e *StalwartEngine) ReloadCertificates() error {

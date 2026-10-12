@@ -1,5 +1,0 @@
-FROM stalwartlabs/stalwart:v0.15.5
-
-COPY deploy/stalwart.toml /opt/stalwart/etc/config.toml
-
-EXPOSE 25 465 587 143 993 4190 8080

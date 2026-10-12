@@ -11,7 +11,7 @@ import (
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 )
 
-func (s *Store) CreateMailbox(ctx context.Context, domainID, localPart string) (models.Mailbox, error) {
+func (s *Store) CreateMailbox(ctx context.Context, domainID, localPart string, quotaMB int64) (models.Mailbox, error) {
 	d, err := s.GetDomain(ctx, domainID)
 	if err != nil {
 		return models.Mailbox{}, err
@@ -21,10 +21,11 @@ func (s *Store) CreateMailbox(ctx context.Context, domainID, localPart string) (
 		DomainID:  domainID,
 		LocalPart: localPart,
 		Address:   localPart + "@" + d.Name,
+		QuotaMB:   quotaMB,
 	}
 	err = s.pool.QueryRow(ctx,
-		`INSERT INTO mailboxes (id, domain_id, local_part, address) VALUES ($1, $2, $3, $4) RETURNING created_at, updated_at`,
-		m.ID, m.DomainID, m.LocalPart, m.Address).Scan(&m.CreatedAt, &m.UpdatedAt)
+		`INSERT INTO mailboxes (id, domain_id, local_part, address, quota_mb) VALUES ($1, $2, $3, $4, $5) RETURNING created_at, updated_at`,
+		m.ID, m.DomainID, m.LocalPart, m.Address, m.QuotaMB).Scan(&m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return models.Mailbox{}, ErrExists
@@ -39,7 +40,7 @@ func (s *Store) ListMailboxes(ctx context.Context, domainID string) ([]models.Ma
 		return nil, err
 	}
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, domain_id, local_part, address, created_at, updated_at FROM mailboxes WHERE domain_id = $1 ORDER BY address`,
+		`SELECT id, domain_id, local_part, address, quota_mb, created_at, updated_at FROM mailboxes WHERE domain_id = $1 ORDER BY address`,
 		domainID)
 	if err != nil {
 		return nil, fmt.Errorf("list mailboxes: %w", err)
@@ -48,7 +49,7 @@ func (s *Store) ListMailboxes(ctx context.Context, domainID string) ([]models.Ma
 	mailboxes := []models.Mailbox{}
 	for rows.Next() {
 		var m models.Mailbox
-		if err := rows.Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.QuotaMB, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scan mailbox: %w", err)
 		}
 		mailboxes = append(mailboxes, m)
@@ -59,8 +60,8 @@ func (s *Store) ListMailboxes(ctx context.Context, domainID string) ([]models.Ma
 func (s *Store) GetMailbox(ctx context.Context, id string) (models.Mailbox, error) {
 	var m models.Mailbox
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, domain_id, local_part, address, created_at, updated_at FROM mailboxes WHERE id = $1`, id).
-		Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.CreatedAt, &m.UpdatedAt)
+		`SELECT id, domain_id, local_part, address, quota_mb, created_at, updated_at FROM mailboxes WHERE id = $1`, id).
+		Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.QuotaMB, &m.CreatedAt, &m.UpdatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return models.Mailbox{}, ErrNotFound

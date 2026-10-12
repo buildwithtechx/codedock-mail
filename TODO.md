@@ -6,7 +6,7 @@ Standalone mail product. Own repo, own release. Installable in Codedock via HTTP
 
 - Backend: Go (`maild` daemon, Echo REST + OpenAPI, pgx Postgres, Docker SDK, cron).
 - Reason: matches Codedock stack, single binary, no second runtime on mail host. Systems work (Docker, SSH, firewall, certs, DNS probes) reuses Codedock patterns.
-- Admin UI: React + TypeScript, embeddable in Codedock dashboard.
+- Admin UI: React + TypeScript in `apps/admin`, served by `maild` itself at `/` (same-origin API, token login). Codedock users get a native `/mail` page instead; end users everywhere get SnappyMail webmail.
 - Webmail: reuse, never build from scratch (SnappyMail / Roundcube / Zero-fork as container).
 - Integration: Codedock holds only a reference row (`server_id`, `domain`, `maild_url`, `webmail_url`). All mailbox writes go through `maild` HTTP API (token/mTLS). No FK across products.
 - SMTP/IMAP (25/465/587/143/993/4190) bypass Traefik, raw TCP to host. Only webmail HTTPS goes through the edge.
@@ -53,16 +53,16 @@ codedock-mail/
 - [x] Phase 1: `maild` + Postgres. One domain, mailbox CRUD via API (`internal/store` migration `001_initial`, `internal/api` routes), health endpoint.
 - [x] Phase 2: DKIM/SPF/DMARC generation + DNS instructions, LE cert expiry tracking + hourly watcher with engine reload, port-25 / PTR / rDNS checks. Issuance stays engine-side (Stalwart ACME provider + per-domain Automatic).
 - [x] Phase 3a (this repo): full lifecycle (`GET/DELETE` domains and mailboxes), Thunderbird + Outlook autoconfig, `MAILD_API_TOKEN` auth, maild Dockerfile, webmail default (SnappyMail 2.38.2, see `apps/webmail-ext/DECISION.md`), adapter contract (`docs/ADAPTER.md`), live Postgres proof.
-- [x] Phase 3b: engine config verified by boot (`deploy/stalwart.toml`), SnappyMail pinned with admin-panel wiring documented, install assets for Coolify/Dokku/Dokploy/Openship (`deploy/*`).
-- [ ] Phase 3c (codedock repo): one-click template + dashboard page per `docs/ADAPTER.md`.
+- [x] Phase 3b: engine config verified by boot (`deploy/stalwart.toml`), SnappyMail pinned with admin-panel wiring documented. Openship and Dokku install paths investigated and removed (unverifiable here; see `deploy/README.md`).
+- [x] Phase 3c (codedock repo, branch `feat/platform-batch`, unmerged): `021_mail_servers` migration + vault-encrypted token, `MailService` HTTP client, `MailHandler` with org scoping, 15 `/api/mail/*` routes with schema + openapi, `mail.yaml` one-click template (management plane: maild + postgres + webmail, engine stays host-level), dashboard `/mail` page + nav.
+- [ ] First release: `docker-images.yml` publishes `ghcr.io/buildwithtechx/codedock-mail` on `v*` tags (semver + latest, RCs skip latest). Cut the first tag to make installs pullable.
 
 ## Install matrix
 
-| Platform | Asset | Notes |
-| -------- | ----- | ----- |
-| Any VPS / Coolify / Dokploy | `docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md` |
-| Dokku | `deploy/dokku/` | four apps + linked Postgres, TCP ports published directly |
-| Openship | `deploy/openship/codedock-mail.json` | unverified starting-point catalog template |
+| Platform                    | Asset                                         | Notes                                                     |
+| --------------------------- | --------------------------------------------- | --------------------------------------------------------- |
+| Any VPS / Coolify / Dokploy | `docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md`          |
+
 - [ ] Phase 4: backups (maildir + db), quota, multi-domain, sieve filters, audit log.
 
 ## Deliverability checklist
@@ -73,7 +73,15 @@ codedock-mail/
 - [ ] LE cert issue/renew for `mail.<domain>` + webmail host.
 - [ ] Firewall: open 25/465/587/143/993/4190 TCP to host, webmail HTTP only via edge.
 
+## Tenancy (decided: single-tenant daemon, multi-domain)
+
+maild serves one operator: a single Bearer token, audit actor fixed to
+`operator`, no organization model, no per-tenant isolation. A second tenant
+is a second maild install (cheap: one compose each). Codedock provides the
+multi-org layer above via reference rows. Multi-domain is fully supported.
+Revisit only on a real second-tenant requirement; the change is additive
+(`organization_id` + per-org tokens).
+
 ## Open questions
 
-- [ ] v1 scope: single-server/single-domain or multi-tenant from day one?
 - [ ] Stalwart v0.16 JMAP management migration (client needed before unpinning v0.15.5).

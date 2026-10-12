@@ -11,11 +11,12 @@ type DKIMResult struct {
 type Engine interface {
 	Provision(domain string) error
 	RemoveDomain(domain string) error
-	AddMailbox(address, secretHash string) error
+	AddMailbox(address, secretHash string, quotaBytes int64) error
 	RemoveMailbox(address string) error
 	CreateDKIM(domain, selector, algorithm string) (DKIMResult, error)
 	DNSRecords(domain string) ([]dns.Record, error)
 	ReloadCertificates() error
+	SieveAddr() string
 	Health() error
 }
 

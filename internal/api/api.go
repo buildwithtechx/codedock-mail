@@ -1,26 +1,38 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"github.com/buildwithtechx/codedock-mail/apps/admin"
 	"github.com/buildwithtechx/codedock-mail/internal/autoconfig"
+	"github.com/buildwithtechx/codedock-mail/internal/backups"
 	"github.com/buildwithtechx/codedock-mail/internal/certs"
 	"github.com/buildwithtechx/codedock-mail/internal/dns"
 	"github.com/buildwithtechx/codedock-mail/internal/models"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
+	"github.com/buildwithtechx/codedock-mail/internal/sieve"
 	"github.com/buildwithtechx/codedock-mail/internal/store"
 )
 
 type Server struct {
-	echo   *echo.Echo
-	store  *store.Store
-	engine provisioner.Engine
+	echo      *echo.Echo
+	store     *store.Store
+	engine    provisioner.Engine
+	dsn       string
+	backupDir string
+}
+
+func (s *Server) SetDatabase(dsn, backupDir string) {
+	s.dsn = dsn
+	s.backupDir = backupDir
 }
 
 func New(s *store.Store, engine provisioner.Engine, token string) *Server {
@@ -33,11 +45,7 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 				return key == token, nil
 			},
 			Skipper: func(c echo.Context) bool {
-				path := c.Request().URL.Path
-				return path == "/health" ||
-					strings.HasPrefix(path, "/autoconfig/") ||
-					strings.HasPrefix(path, "/.well-known/autoconfig/") ||
-					strings.HasPrefix(path, "/autodiscover/")
+				return !strings.HasPrefix(c.Request().URL.Path, "/api/")
 			},
 		}))
 	}
@@ -55,6 +63,13 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 	e.GET("/api/domains/:id/checks", srv.domainChecks)
 	e.GET("/api/certs", srv.listCerts)
 	e.POST("/api/certs/probe", srv.probeCert)
+	e.GET("/api/domains/:domainId/mailboxes/:mailboxId/sieve", srv.getSieve)
+	e.PUT("/api/domains/:domainId/mailboxes/:mailboxId/sieve", srv.putSieve)
+	e.GET("/api/backups", srv.listBackups)
+	e.POST("/api/backups", srv.createBackup)
+	e.POST("/api/backups/:id/restore", srv.restoreBackup)
+	e.DELETE("/api/backups/:id", srv.deleteBackup)
+	e.GET("/api/audit", srv.listAudit)
 	e.GET("/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
 	e.GET("/.well-known/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
 	e.GET("/autodiscover/autodiscover.xml", srv.outlookConfig)
@@ -64,6 +79,10 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 
 func (s *Server) Start(addr string) error {
 	return s.echo.Start(addr)
+}
+
+func (s *Server) RegisterAdmin() {
+	admin.RegisterHandlers(s.echo)
 }
 
 func (s *Server) health(c echo.Context) error {
@@ -96,6 +115,7 @@ func (s *Server) createDomain(c echo.Context) error {
 	if err != nil {
 		return writeError(c, err)
 	}
+	s.audit(c.Request().Context(), "domain.create", "domain", d.ID, d.Name)
 	return c.JSON(http.StatusCreated, d)
 }
 
@@ -116,6 +136,9 @@ func (s *Server) createMailbox(c echo.Context) error {
 	if input.LocalPart == "" || strings.Contains(input.LocalPart, "@") {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "localPart is required and must not contain @"})
 	}
+	if input.QuotaMB < 0 {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "quotaMb must not be negative"})
+	}
 	ctx := c.Request().Context()
 	d, err := s.store.GetDomain(ctx, c.Param("id"))
 	if err != nil {
@@ -131,16 +154,17 @@ func (s *Server) createMailbox(c echo.Context) error {
 		if err != nil {
 			return writeError(c, err)
 		}
-		if err := s.engine.AddMailbox(input.LocalPart+"@"+d.Name, hash); err != nil {
+		if err := s.engine.AddMailbox(input.LocalPart+"@"+d.Name, hash, input.QuotaMB*1024*1024); err != nil {
 			return writeError(c, err)
 		}
 		credentials.Password = password
 	}
-	m, err := s.store.CreateMailbox(ctx, d.ID, input.LocalPart)
+	m, err := s.store.CreateMailbox(ctx, d.ID, input.LocalPart, input.QuotaMB)
 	if err != nil {
 		return writeError(c, err)
 	}
 	credentials.Mailbox = m
+	s.audit(ctx, "mailbox.create", "mailbox", m.ID, m.Address)
 	return c.JSON(http.StatusCreated, credentials)
 }
 
@@ -182,6 +206,7 @@ func (s *Server) createDKIM(c echo.Context) error {
 	if err != nil {
 		return writeError(c, err)
 	}
+	s.audit(ctx, "dkim.create", "domain", d.ID, result.Selector)
 	return c.JSON(http.StatusCreated, key)
 }
 
@@ -297,6 +322,7 @@ func (s *Server) deleteDomain(c echo.Context) error {
 	if err := s.store.DeleteDomain(ctx, d.ID); err != nil {
 		return writeError(c, err)
 	}
+	s.audit(ctx, "domain.delete", "domain", d.ID, d.Name)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -317,6 +343,7 @@ func (s *Server) deleteMailbox(c echo.Context) error {
 	if err := s.store.DeleteMailbox(ctx, m.ID); err != nil {
 		return writeError(c, err)
 	}
+	s.audit(ctx, "mailbox.delete", "mailbox", m.ID, m.Address)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -369,6 +396,138 @@ func (s *Server) lookupProvider(c echo.Context, email string) (autoconfig.Provid
 		return autoconfig.Provider{}, writeError(c, err)
 	}
 	return autoconfig.Provider{Domain: d.Name, DisplayName: d.Name + " Mail", MailHost: "mail." + d.Name}, nil
+}
+
+func (s *Server) getSieve(c echo.Context) error {
+	if s.engine == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "engine not configured"})
+	}
+	password := strings.TrimSpace(c.Request().Header.Get("X-Mailbox-Password"))
+	if password == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "X-Mailbox-Password header is required"})
+	}
+	ctx := c.Request().Context()
+	m, err := s.mailboxInDomain(ctx, c.Param("domainId"), c.Param("mailboxId"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	scripts, content, err := sieve.GetActive(s.engine.SieveAddr(), m.Address, password)
+	if err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	return c.JSON(http.StatusOK, map[string]any{"address": m.Address, "scripts": scripts, "activeScript": content})
+}
+
+func (s *Server) putSieve(c echo.Context) error {
+	if s.engine == nil {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "engine not configured"})
+	}
+	var input models.SieveInput
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid body"})
+	}
+	input.Password = strings.TrimSpace(input.Password)
+	input.Name = strings.TrimSpace(input.Name)
+	if input.Password == "" || input.Name == "" || input.Script == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "password, name, and script are required"})
+	}
+	ctx := c.Request().Context()
+	m, err := s.mailboxInDomain(ctx, c.Param("domainId"), c.Param("mailboxId"))
+	if err != nil {
+		return writeError(c, err)
+	}
+	if err := sieve.SetActiveScript(s.engine.SieveAddr(), m.Address, input.Password, input.Name, input.Script); err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	s.audit(ctx, "sieve.update", "mailbox", m.ID, m.Address)
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) mailboxInDomain(ctx context.Context, domainID, mailboxID string) (models.Mailbox, error) {
+	m, err := s.store.GetMailbox(ctx, mailboxID)
+	if err != nil {
+		return models.Mailbox{}, err
+	}
+	if m.DomainID != domainID {
+		return models.Mailbox{}, store.ErrNotFound
+	}
+	return m, nil
+}
+
+func (s *Server) listBackups(c echo.Context) error {
+	manifests, err := backups.List(s.backupDirOrDefault())
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(http.StatusOK, manifests)
+}
+
+func (s *Server) createBackup(c echo.Context) error {
+	if s.dsn == "" {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "database not configured"})
+	}
+	manifest, err := backups.Create(c.Request().Context(), s.dsn, s.backupDirOrDefault())
+	if err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	s.audit(c.Request().Context(), "backup.create", "backup", manifest.ID, manifest.Path)
+	return c.JSON(http.StatusCreated, manifest)
+}
+
+func (s *Server) restoreBackup(c echo.Context) error {
+	if s.dsn == "" {
+		return c.JSON(http.StatusServiceUnavailable, map[string]string{"error": "database not configured"})
+	}
+	id := c.Param("id")
+	if id == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "missing backup id"})
+	}
+	if err := backups.Restore(c.Request().Context(), s.dsn, s.backupDirOrDefault(), id); err != nil {
+		return c.JSON(http.StatusBadGateway, map[string]string{"error": err.Error()})
+	}
+	s.audit(c.Request().Context(), "backup.restore", "backup", id, "")
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) deleteBackup(c echo.Context) error {
+	id := c.Param("id")
+	if id == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "missing backup id"})
+	}
+	if err := backups.Delete(s.backupDirOrDefault(), id); err != nil {
+		return writeError(c, err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+func (s *Server) listAudit(c echo.Context) error {
+	limit := 50
+	if raw := strings.TrimSpace(c.QueryParam("limit")); raw != "" {
+		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+	entries, err := s.store.ListAudit(c.Request().Context(), limit)
+	if err != nil {
+		return writeError(c, err)
+	}
+	return c.JSON(http.StatusOK, entries)
+}
+
+func (s *Server) backupDirOrDefault() string {
+	if s.backupDir != "" {
+		return s.backupDir
+	}
+	return backups.Dir()
+}
+
+func (s *Server) audit(ctx context.Context, action, resourceType, resourceID, detail string) {
+	_, _ = s.store.Log(ctx, models.AuditEntry{
+		Action:       action,
+		ResourceType: resourceType,
+		ResourceID:   resourceID,
+		Detail:       detail,
+	})
 }
 
 func writeError(c echo.Context, err error) error {

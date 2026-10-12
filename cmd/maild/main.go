@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/buildwithtechx/codedock-mail/internal/api"
+	"github.com/buildwithtechx/codedock-mail/internal/backups"
 	"github.com/buildwithtechx/codedock-mail/internal/certs"
 	"github.com/buildwithtechx/codedock-mail/internal/provisioner"
 	"github.com/buildwithtechx/codedock-mail/internal/store"
@@ -48,6 +49,8 @@ func main() {
 		port = "8081"
 	}
 	srv := api.New(st, engine, os.Getenv("MAILD_API_TOKEN"))
+	srv.SetDatabase(dsn, envOr("BACKUP_DIR", backups.Dir()))
+	srv.RegisterAdmin()
 	if err := srv.Start(":" + port); err != nil {
 		slog.Error("start server", "error", err)
 		os.Exit(1)

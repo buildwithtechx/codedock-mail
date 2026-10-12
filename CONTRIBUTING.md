@@ -45,6 +45,19 @@ npm run dev:docs           # docs site
 - You must understand every line you submit. AI submissions you can't explain will be rejected.
 - Merge requires `go vet`, `go test`, Biome format, and `tsc --noEmit` clean.
 
+## Release
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Tag push runs `docker-images.yml`: tests gate the build, then the `maild`
+image publishes to `ghcr.io/buildwithtechx/codedock-mail` with semver tags
+plus `latest` (RC tags skip `latest`). Manual test without moving `latest`:
+
+Actions → Docker images → Run workflow → optional tag (blank → short SHA).
+
 ## Conventions
 
 - Go: `internal/models` → `store` → `provisioner`/`dns`/`certs` → `api`. Narrow interfaces, no global state, wire up in `cmd/maild/main.go`.
