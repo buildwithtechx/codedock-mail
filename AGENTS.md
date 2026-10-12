@@ -39,6 +39,8 @@
 ## Apps & Workspaces
 
 ```sh
+npm run dev          # daemon (air) + admin UI together
+npm run dev:daemon   # maild with live reload
 npm run dev:admin    # admin UI dev server
 npm run dev:docs     # docs site dev server
 npm run build:daemon # builds bin/maild

@@ -33,7 +33,9 @@ Requirements: Go 1.26+, Node.js 22+, Docker.
 
 ```bash
 cp .env.example .env
-npm run build:admin
-go run ./cmd/maild
-npm run dev:admin
+npm run dev
 ```
+
+`npm run dev` runs the daemon under air (`:8081`) and the admin UI
+under Vite (`:3001`, proxying `/api`) together. Run each alone with
+`npm run dev:daemon` or `npm run dev:admin`.

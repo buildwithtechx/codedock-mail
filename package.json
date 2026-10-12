@@ -7,7 +7,8 @@
   "type": "module",
   "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "npm run dev:admin",
+    "dev": "concurrently -k -n \"daemon,admin\" -c \"blue,magenta\" \"npm run dev:daemon\" \"npm run dev:admin\"",
+    "dev:daemon": "go run github.com/air-verse/air@latest -c .air.toml",
     "dev:admin": "npm run dev --workspace=@codedock-mail/admin",
     "build:admin": "npm run build --workspace=@codedock-mail/admin",
     "dev:docs": "npm run dev --workspace=@codedock-mail/docs",
@@ -19,6 +20,7 @@
     "test": "go test ./..."
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.15"
+    "@biomejs/biome": "^2.5.15",
+    "concurrently": "^10.0.5"
   }
 }
