@@ -63,7 +63,8 @@ codedock-mail/
 | --------------------------- | --------------------------------------------- | --------------------------------------------------------- |
 | Any VPS / Coolify / Dokploy | `docker-compose.yml` + `deploy/stalwart.toml` | single shared stack file, see `deploy/README.md`          |
 
-- [ ] Phase 4: backups (maildir + db), quota, multi-domain, sieve filters, audit log.
+- [x] Phase 4: backups (maildir tarball + db pg_dump via `POST /api/backups`, `MAIL_DATA_DIR` mount, `mail_backups` volume), quota (create + `PUT .../quota`, engine PATCH, admin editors), sieve filters (ManageSieve client + `GET/PUT .../sieve` + admin editor), audit log (`004_audit_log`, `GET /api/audit`, admin panel). Multi-domain was already supported.
+- [ ] Live-domain proof: run `docs/LIVE_PROOF.md` (`deploy/live_proof.py` setup → checks → roundtrip) against a real domain, then tick the deliverability checklist for real.
 
 ## Deliverability checklist
 
@@ -73,7 +74,7 @@ codedock-mail/
 - [ ] LE cert issue/renew for `mail.<domain>` + webmail host.
 - [ ] Firewall: open 25/465/587/143/993/4190 TCP to host, webmail HTTP only via edge.
 
-## Tenancy (decided: single-tenant daemon, multi-domain)
+## Tenancy (decided: single-tenant daemon, multi-domain; v1 scope confirmed)
 
 maild serves one operator: a single Bearer token, audit actor fixed to
 `operator`, no organization model, no per-tenant isolation. A second tenant
@@ -84,4 +85,4 @@ Revisit only on a real second-tenant requirement; the change is additive
 
 ## Open questions
 
-- [ ] Stalwart v0.16 JMAP management migration (client needed before unpinning v0.15.5).
+- [ ] Stalwart v0.16 JMAP management migration (client needed before unpinning v0.15.5). Background watch: `docs/JMAP_WATCH.md` + monthly `stalwart-watch` workflow.

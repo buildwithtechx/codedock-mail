@@ -230,6 +230,13 @@ func TestMailboxGetAndDelete(t *testing.T) {
 	if err != nil || found.Address != "alice@example.com" {
 		t.Fatalf("expected alice@example.com, got %+v %v", found, err)
 	}
+	updated, err := st.UpdateMailboxQuota(ctx, created.ID, 1024)
+	if err != nil || updated.QuotaMB != 1024 || updated.Address != "alice@example.com" {
+		t.Fatalf("expected quota 1024 on alice@example.com, got %+v %v", updated, err)
+	}
+	if _, err := st.UpdateMailboxQuota(ctx, "missing", 1); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
 	if _, err := st.GetMailbox(ctx, "missing"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}

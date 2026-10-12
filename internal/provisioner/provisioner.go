@@ -12,6 +12,7 @@ type Engine interface {
 	Provision(domain string) error
 	RemoveDomain(domain string) error
 	AddMailbox(address, secretHash string, quotaBytes int64) error
+	UpdateMailboxQuota(address string, quotaBytes int64) error
 	RemoveMailbox(address string) error
 	CreateDKIM(domain, selector, algorithm string) (DKIMResult, error)
 	DNSRecords(domain string) ([]dns.Record, error)

@@ -23,7 +23,12 @@ copy those into `.env` as `STALWART_SECRET` instead.
    Automatic. In SnappyMail (`/?admin`) add the domain IMAP/SMTP entries.
 3. Drive everything after that through `maild`: create the domain and DKIM
    key, publish the DNS records it returns, and watch
-   `GET /api/domains/:id/checks`.
+   `GET /api/domains/:id/checks`. For a first real domain, follow
+   `docs/LIVE_PROOF.md` (`deploy/live_proof.py`).
+4. Backups land in the `mail_backups` volume: a Postgres dump plus a
+   tarball of the engine data (`MAIL_DATA_DIR`, mounted read-only).
+   The db restores via `POST /api/backups/:id/restore`; the mail
+   archive restores by hand with the engine stopped.
 
 ## Different mechanism
 

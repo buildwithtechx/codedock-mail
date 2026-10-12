@@ -13,21 +13,27 @@ Specs and runbooks. The docs site lives in `apps/docs`; this folder holds the so
 local-only: domains, mailboxes, and DKIM metadata are stored, but nothing is
 provisioned on an engine and mailbox creation returns no password.
 
-| Method   | Path                         | Notes                                              |
-| -------- | ---------------------------- | -------------------------------------------------- |
-| GET      | `/health`                    | liveness                                           |
-| GET/POST | `/api/domains`               | engine provisioned first when configured           |
-| GET/POST | `/api/domains/:id/mailboxes` | password returned once on create, never stored     |
-| POST     | `/api/domains/:id/dkim`      | engine generates the key, metadata stored          |
-| GET      | `/api/domains/:id/dns`       | local MX/SPF/DMARC/DKIM plus live engine records   |
-| GET      | `/api/domains/:id/checks`    | MX/SPF/DMARC/DKIM, port-25 egress, `?ip=` adds PTR |
-| GET      | `/api/domains/:id`           | single domain |
-| DELETE   | `/api/domains/:id`           | engine principal removed first, then local row (cascade) |
-| DELETE   | `/api/domains/:domainId/mailboxes/:mailboxId` | engine principal removed first |
-| GET      | `/api/certs`                 | tracked certificate expiries |
-| POST     | `/api/certs/probe`           | TLS-handshake expiry probe (implicit TLS ports), upserts tracking row |
-| GET      | `/autoconfig/mail/config-v1.1.xml?emailaddress=` | Thunderbird client config (also under `/.well-known/`) |
-| GET/POST | `/autodiscover/autodiscover.xml` | Outlook 2006a POX (XML body or `?Email=`) |
+| Method   | Path                                                | Notes                                                                                      |
+| -------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| GET      | `/health`                                           | liveness                                                                                   |
+| GET/POST | `/api/domains`                                      | engine provisioned first when configured                                                   |
+| GET/POST | `/api/domains/:id/mailboxes`                        | password returned once on create, never stored                                             |
+| POST     | `/api/domains/:id/dkim`                             | engine generates the key, metadata stored                                                  |
+| GET      | `/api/domains/:id/dns`                              | local MX/SPF/DMARC/DKIM plus live engine records                                           |
+| GET      | `/api/domains/:id/checks`                           | MX/SPF/DMARC/DKIM, port-25 egress, `?ip=` adds PTR                                         |
+| GET      | `/api/domains/:id`                                  | single domain                                                                              |
+| DELETE   | `/api/domains/:id`                                  | engine principal removed first, then local row (cascade)                                   |
+| DELETE   | `/api/domains/:domainId/mailboxes/:mailboxId`       | engine principal removed first                                                             |
+| GET      | `/api/certs`                                        | tracked certificate expiries                                                               |
+| POST     | `/api/certs/probe`                                  | TLS-handshake expiry probe (implicit TLS ports), upserts tracking row                      |
+| PUT      | `/api/domains/:domainId/mailboxes/:mailboxId/quota` | set quota in MB (`0` unlimited), engine PATCH then store                                   |
+| GET/PUT  | `/api/domains/:domainId/mailboxes/:mailboxId/sieve` | ManageSieve scripts (GET needs `X-Mailbox-Password`, PUT takes `{password, name, script}`) |
+| GET/POST | `/api/backups`                                      | list manifests / take db + mail-data backup                                                |
+| POST     | `/api/backups/:id/restore`                          | restore the database dump (mail archive restores by hand, see admin panel)                 |
+| DELETE   | `/api/backups/:id`                                  | delete dump, mail archive, and manifest                                                    |
+| GET      | `/api/audit`                                        | audit log, newest first (`?limit=`, max 200)                                               |
+| GET      | `/autoconfig/mail/config-v1.1.xml?emailaddress=`    | Thunderbird client config (also under `/.well-known/`)                                     |
+| GET/POST | `/autodiscover/autodiscover.xml`                    | Outlook 2006a POX (XML body or `?Email=`)                                                  |
 
 ## Certs
 

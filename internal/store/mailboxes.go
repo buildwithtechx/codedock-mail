@@ -71,6 +71,22 @@ func (s *Store) GetMailbox(ctx context.Context, id string) (models.Mailbox, erro
 	return m, nil
 }
 
+func (s *Store) UpdateMailboxQuota(ctx context.Context, id string, quotaMB int64) (models.Mailbox, error) {
+	var m models.Mailbox
+	err := s.pool.QueryRow(ctx,
+		`UPDATE mailboxes SET quota_mb = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $1
+		 RETURNING id, domain_id, local_part, address, quota_mb, created_at, updated_at`,
+		id, quotaMB).
+		Scan(&m.ID, &m.DomainID, &m.LocalPart, &m.Address, &m.QuotaMB, &m.CreatedAt, &m.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.Mailbox{}, ErrNotFound
+		}
+		return models.Mailbox{}, fmt.Errorf("update mailbox quota: %w", err)
+	}
+	return m, nil
+}
+
 func (s *Store) DeleteMailbox(ctx context.Context, id string) error {
 	result, err := s.pool.Exec(ctx, `DELETE FROM mailboxes WHERE id = $1`, id)
 	if err != nil {

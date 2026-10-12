@@ -17,6 +17,10 @@ type CreateMailboxInput struct {
 	QuotaMB   int64  `json:"quotaMb"`
 }
 
+type UpdateQuotaInput struct {
+	QuotaMB int64 `json:"quotaMb"`
+}
+
 type SieveInput struct {
 	Password string `json:"password"`
 	Name     string `json:"name"`

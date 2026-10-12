@@ -34,7 +34,7 @@ func Dir() string {
 	return filepath.Join("data", "backups")
 }
 
-func Create(ctx context.Context, dsn, dir string) (models.BackupManifest, error) {
+func Create(ctx context.Context, dsn, dir, mailDataDir string) (models.BackupManifest, error) {
 	if _, err := exec.LookPath("pg_dump"); err != nil {
 		return models.BackupManifest{}, fmt.Errorf("pg_dump not found: %w", err)
 	}
@@ -46,7 +46,8 @@ func Create(ctx context.Context, dsn, dir string) (models.BackupManifest, error)
 		return models.BackupManifest{}, fmt.Errorf("create backup dir: %w", err)
 	}
 	id := randomID()
-	path := filepath.Join(dir, "mail-"+time.Now().UTC().Format("20060102-150405")+"-"+id+".sql.gz")
+	stamp := "mail-" + time.Now().UTC().Format("20060102-150405") + "-" + id
+	path := filepath.Join(dir, stamp+".sql.gz")
 	dumpArgs := []string{
 		"-h", cfg.Host, "-p", fmt.Sprint(cfg.Port), "-U", cfg.User, "-d", cfg.Database,
 		"--clean", "--if-exists", "--no-owner", "--no-privileges",
@@ -88,6 +89,16 @@ func Create(ctx context.Context, dsn, dir string) (models.BackupManifest, error)
 		Path:      path,
 		SizeBytes: info.Size(),
 		Tables:    backupTables,
+	}
+	if strings.TrimSpace(mailDataDir) != "" {
+		dataPath := filepath.Join(dir, stamp+".maildata.tar.gz")
+		dataSize, err := ArchiveDir(mailDataDir, dataPath)
+		if err != nil {
+			os.Remove(path)
+			return models.BackupManifest{}, err
+		}
+		manifest.DataPath = dataPath
+		manifest.DataSizeBytes = dataSize
 	}
 	encoded, err := json.Marshal(manifest)
 	if err != nil {
@@ -180,11 +191,13 @@ func Delete(dir, id string) error {
 	}
 	for _, manifest := range manifests {
 		if manifest.ID == id {
-			if err := os.Remove(manifest.Path); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("remove backup file: %w", err)
-			}
-			if err := os.Remove(manifest.Path + ".json"); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("remove manifest: %w", err)
+			for _, path := range []string{manifest.Path, manifest.DataPath, manifest.Path + ".json"} {
+				if path == "" {
+					continue
+				}
+				if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+					return fmt.Errorf("remove backup file: %w", err)
+				}
 			}
 			return nil
 		}

@@ -13,11 +13,16 @@ services:
       STALWART_USER: ${STALWART_USER:-admin}
       STALWART_SECRET: ${STALWART_SECRET:?set STALWART_SECRET}
       MAILD_API_TOKEN: ${MAILD_API_TOKEN:?set MAILD_API_TOKEN}
+      BACKUP_DIR: /data/backups
+      MAIL_DATA_DIR: /var/lib/stalwart
     depends_on:
       - postgres
       - engine
     ports:
       - "8081:8081"
+    volumes:
+      - stalwart_data:/var/lib/stalwart:ro
+      - mail_backups:/data/backups
     restart: unless-stopped
 
   postgres:
@@ -58,3 +63,4 @@ volumes:
   mail_db:
   stalwart_data:
   snappymail_data:
+  mail_backups:

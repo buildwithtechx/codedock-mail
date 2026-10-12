@@ -57,6 +57,13 @@ func (e *StalwartEngine) AddMailbox(address, secretHash string, quotaBytes int64
 	return err
 }
 
+func (e *StalwartEngine) UpdateMailboxQuota(address string, quotaBytes int64) error {
+	_, err := e.do(http.MethodPatch, "/api/principal/"+url.PathEscape(address), map[string]any{
+		"quota": quotaBytes,
+	})
+	return err
+}
+
 func (e *StalwartEngine) RemoveMailbox(address string) error {
 	_, err := e.do(http.MethodDelete, "/api/principal/"+url.PathEscape(address), nil)
 	return err

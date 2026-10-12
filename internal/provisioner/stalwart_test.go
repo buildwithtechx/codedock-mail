@@ -98,6 +98,22 @@ func TestAddMailboxPayload(t *testing.T) {
 	}
 }
 
+func TestUpdateMailboxQuotaPayload(t *testing.T) {
+	var captured capturedRequest
+	server := newTestServer(t, 200, `{}`, &captured)
+	defer server.Close()
+	engine := NewStalwart(server.URL, "admin", "secret")
+	if err := engine.UpdateMailboxQuota("alice@example.com", 536870912); err != nil {
+		t.Fatalf("update mailbox quota: %v", err)
+	}
+	if captured.method != http.MethodPatch || captured.path != "/api/principal/alice@example.com" {
+		t.Fatalf("expected PATCH escaped principal path, got %s %s", captured.method, captured.path)
+	}
+	if captured.body["quota"] != float64(536870912) {
+		t.Fatalf("unexpected quota %+v", captured.body["quota"])
+	}
+}
+
 func TestRemoveMailboxPath(t *testing.T) {
 	var captured capturedRequest
 	server := newTestServer(t, 200, `{}`, &captured)

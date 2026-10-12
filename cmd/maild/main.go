@@ -50,6 +50,7 @@ func main() {
 	}
 	srv := api.New(st, engine, os.Getenv("MAILD_API_TOKEN"))
 	srv.SetDatabase(dsn, envOr("BACKUP_DIR", backups.Dir()))
+	srv.SetMailDataDir(os.Getenv("MAIL_DATA_DIR"))
 	srv.RegisterAdmin()
 	if err := srv.Start(":" + port); err != nil {
 		slog.Error("start server", "error", err)

@@ -34,6 +34,9 @@ a token: `/health`, `/autoconfig/*`, `/autodiscover/*`, `/.well-known/*`.
 | Remove mailbox | `DELETE /api/domains/:domainId/mailboxes/:mailboxId` |
 | Health | `/health` plus `GET /api/domains/:id/checks` for the status page |
 | Cert watch | `GET /api/certs` |
+| Quota | `PUT /api/domains/:domainId/mailboxes/:mailboxId/quota` |
+| Backup | `POST /api/backups`, `GET /api/backups` for the backup page |
+| Audit | `GET /api/audit` |
 | Uninstall | `DELETE /api/domains/:id`, delete stack |
 
 Engine ordering inside `maild` is engine-first, store-second on create and

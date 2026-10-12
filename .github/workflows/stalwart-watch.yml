@@ -1,0 +1,33 @@
+name: stalwart-watch
+
+on:
+  schedule:
+    - cron: "23 7 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 - <<'EOF'
+        import json
+        import re
+        import urllib.request
+
+        with open("docker-compose.yml") as handle:
+            pinned = re.search(r"stalwartlabs/stalwart:(v[\w.]+)", handle.read()).group(1)
+        with urllib.request.urlopen(
+            "https://api.github.com/repos/stalwartlabs/stalwart/releases/latest",
+            timeout=30,
+        ) as resp:
+            latest = json.load(resp)["tag_name"]
+        print("pinned:", pinned, "latest:", latest)
+        if latest != pinned:
+            raise SystemExit(
+                "upstream moved to %s (pinned %s); see docs/JMAP_WATCH.md" % (latest, pinned)
+            )
+        EOF

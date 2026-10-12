@@ -6,6 +6,7 @@ export interface MailDomain {
 export interface Mailbox {
   id: string;
   address: string;
+  quotaMb: number;
 }
 
 export interface MailboxCredentials extends Mailbox {
@@ -29,6 +30,37 @@ export interface MailCert {
   id: string;
   hostname: string;
   expiresAt: string;
+}
+
+export interface SieveScript {
+  name: string;
+  active: boolean;
+}
+
+export interface SieveState {
+  address: string;
+  scripts: SieveScript[];
+  activeScript: string;
+}
+
+export interface BackupManifest {
+  id: string;
+  createdAt: string;
+  path: string;
+  sizeBytes: number;
+  dataPath?: string;
+  dataSizeBytes?: number;
+  tables: string[];
+}
+
+export interface AuditEntry {
+  id: string;
+  actor: string;
+  action: string;
+  resourceType: string;
+  resourceId: string;
+  detail: string;
+  createdAt: string;
 }
 
 export class ApiUnauthorized extends Error {
@@ -83,13 +115,41 @@ export const mailApi = {
   deleteDomain: (id: string): Promise<void> => request(`/api/domains/${id}`, { method: 'DELETE' }),
   listMailboxes: (domainId: string): Promise<Mailbox[]> =>
     request(`/api/domains/${domainId}/mailboxes`),
-  createMailbox: (domainId: string, localPart: string): Promise<MailboxCredentials> =>
+  createMailbox: (
+    domainId: string,
+    localPart: string,
+    quotaMb: number
+  ): Promise<MailboxCredentials> =>
     request(`/api/domains/${domainId}/mailboxes`, {
       method: 'POST',
-      body: JSON.stringify({ localPart }),
+      body: JSON.stringify({ localPart, quotaMb }),
     }),
   deleteMailbox: (domainId: string, mailboxId: string): Promise<void> =>
     request(`/api/domains/${domainId}/mailboxes/${mailboxId}`, { method: 'DELETE' }),
+  updateQuota: (domainId: string, mailboxId: string, quotaMb: number): Promise<Mailbox> =>
+    request(`/api/domains/${domainId}/mailboxes/${mailboxId}/quota`, {
+      method: 'PUT',
+      body: JSON.stringify({ quotaMb }),
+    }),
+  getSieve: (domainId: string, mailboxId: string, password: string): Promise<SieveState> =>
+    request(`/api/domains/${domainId}/mailboxes/${mailboxId}/sieve`, {
+      headers: { 'X-Mailbox-Password': password },
+    }),
+  putSieve: (
+    domainId: string,
+    mailboxId: string,
+    payload: { password: string; name: string; script: string }
+  ): Promise<{ status: string }> =>
+    request(`/api/domains/${domainId}/mailboxes/${mailboxId}/sieve`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+  listBackups: (): Promise<BackupManifest[]> => request('/api/backups'),
+  createBackup: (): Promise<BackupManifest> => request('/api/backups', { method: 'POST' }),
+  restoreBackup: (id: string): Promise<{ status: string }> =>
+    request(`/api/backups/${id}/restore`, { method: 'POST' }),
+  deleteBackup: (id: string): Promise<void> => request(`/api/backups/${id}`, { method: 'DELETE' }),
+  listAudit: (limit: number): Promise<AuditEntry[]> => request(`/api/audit?limit=${limit}`),
   createDkim: (domainId: string): Promise<unknown> =>
     request(`/api/domains/${domainId}/dkim`, {
       method: 'POST',
