@@ -72,6 +72,8 @@ func New(s *store.Store, engine provisioner.Engine, token string) *Server {
 	e.POST("/api/backups/:id/restore-mail", srv.restoreMail)
 	e.DELETE("/api/backups/:id", srv.deleteBackup)
 	e.GET("/api/audit", srv.listAudit)
+	e.GET("/api/mail/idle", srv.mailIdle)
+	e.GET("/mail/idle", srv.mailIdle)
 	e.GET("/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
 	e.GET("/.well-known/autoconfig/mail/config-v1.1.xml", srv.thunderbirdConfig)
 	e.GET("/autodiscover/autodiscover.xml", srv.outlookConfig)

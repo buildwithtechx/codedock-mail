@@ -34,14 +34,29 @@ func handleStaticFS(c echo.Context) error {
 		if err != nil {
 			return c.String(http.StatusNotFound, "Admin not built. Run 'npm run build:admin' first.")
 		}
-		c.Response().Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.Response().Header().Set("Cache-Control", "no-cache, must-revalidate")
+		c.Response().Header().Set("Vary", "Accept-Encoding")
 		return c.HTMLBlob(http.StatusOK, indexContent)
 	}
+
 	contentType := mime.TypeByExtension(filepath.Ext(reqPath))
 	if contentType == "" {
 		contentType = http.DetectContentType(content)
 	}
-	if strings.HasPrefix(reqPath, "assets/") {
+
+	c.Response().Header().Set("Vary", "Accept-Encoding")
+
+	// Precompressed asset delivery if client accepts gzip
+	if strings.Contains(c.Request().Header.Get("Accept-Encoding"), "gzip") {
+		if gzContent, gzErr := fs.ReadFile(DistFS, "dist/"+reqPath+".gz"); gzErr == nil {
+			content = gzContent
+			c.Response().Header().Set("Content-Encoding", "gzip")
+		}
+	}
+
+	if reqPath == "index.html" {
+		c.Response().Header().Set("Cache-Control", "no-cache, must-revalidate")
+	} else if strings.HasPrefix(reqPath, "assets/") {
 		c.Response().Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	} else {
 		c.Response().Header().Set("Cache-Control", "public, max-age=3600")
